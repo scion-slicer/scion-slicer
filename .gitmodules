@@ -1,0 +1,4 @@
+[submodule "vendor/DragonFruit"]
+	path = vendor/DragonFruit
+	url = https://github.com/Open-Resin-Alliance/DragonFruit.git
+	branch = dev

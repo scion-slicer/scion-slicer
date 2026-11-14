@@ -1,0 +1,3 @@
+[toolchain]
+# Matches vendor/DragonFruit, whose engine we build.
+channel = "1.97.0"

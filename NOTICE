@@ -1,0 +1,18 @@
+Scion Slicer
+Copyright (c) 2026 Scion Slicer contributors
+Licensed under the GNU Affero General Public License v3.0 or later (see LICENSE).
+
+This project builds on:
+
+- DragonFruit (https://github.com/Open-Resin-Alliance/DragonFruit)
+  Copyright (c) Open Resin Alliance and DragonFruit contributors.
+  AGPL-3.0. Included as the git submodule vendor/DragonFruit, with the changes in
+  patches/dragonfruit/ applied at build time.
+
+- DragonFruit plugins (printer formats and material profiles), each in its own repository
+  under https://github.com/Open-Resin-Alliance. MIT License,
+  Copyright (c) 2026 Open Resin Alliance.
+
+- UVtools (https://github.com/sn4k3/UVtools), AGPL-3.0, Tiago Conceição and UVtools
+  contributors: the resin trap and suction cup rules in
+  crates/scion-slicer-core/src/checks.rs are translated from its IssueManager.

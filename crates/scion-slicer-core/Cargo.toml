@@ -1,0 +1,14 @@
+[package]
+name = "scion-slicer-core"
+description = "Scion Slicer's own analysis on top of the DragonFruit engine: print checks and mesh loading."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+dragonfruit-slicing-engine.workspace = true
+dragonfruit-islands.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+rayon.workspace = true

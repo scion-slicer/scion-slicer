@@ -1,0 +1,4 @@
+/target
+# Written by scripts/bootstrap.sh
+/.scion
+.DS_Store
