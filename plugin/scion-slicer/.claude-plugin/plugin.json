@@ -1,0 +1,19 @@
+{
+  "name": "scion-slicer",
+  "version": "0.1.0",
+  "description": "Resin 3D printing tools for your agent: check a model for resin traps, suction cups, peel problems and ledges before you slice it.",
+  "author": {
+    "name": "Scion Slicer contributors",
+    "url": "https://github.com/scion-slicer"
+  },
+  "homepage": "https://github.com/scion-slicer/scion-slicer",
+  "repository": "https://github.com/scion-slicer/scion-slicer",
+  "license": "AGPL-3.0-or-later",
+  "keywords": [
+    "resin",
+    "3d-printing",
+    "msla",
+    "slicer",
+    "mcp"
+  ]
+}

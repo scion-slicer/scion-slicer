@@ -1,0 +1,95 @@
+name: Release
+
+# Push a vX.Y.Z tag (see scripts/release.mjs). Builds the server for every platform in
+# npm/platforms.json, publishes the platform packages and then the launcher to npm with
+# trusted publishing, and creates the GitHub release from the CHANGELOG section.
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: read
+
+jobs:
+  versions:
+    runs-on: ubuntu-latest
+    outputs:
+      platforms: ${{ steps.platforms.outputs.json }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: node scripts/release.mjs --check "$GITHUB_REF_NAME"
+      - id: platforms
+        run: echo "json=$(node -e 'process.stdout.write(JSON.stringify(require("./npm/platforms.json")))')" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: versions
+    strategy:
+      fail-fast: true
+      matrix:
+        platform: ${{ fromJSON(needs.versions.outputs.platforms) }}
+    runs-on: ${{ matrix.platform.runner }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: ./scripts/bootstrap.sh
+      - run: rustup target add ${{ matrix.platform.target }}
+      - run: cargo build --profile dist -p scion-slicer-mcp --target ${{ matrix.platform.target }}
+      - name: Package
+        run: |
+          exe=target/${{ matrix.platform.target }}/dist/scion-slicer-mcp
+          [[ "${{ matrix.platform.os }}" == win32 ]] && exe="$exe.exe"
+          node scripts/npm-platform.mjs ${{ matrix.platform.npm }} "$exe" "dist/${{ matrix.platform.npm }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-${{ matrix.platform.npm }}
+          path: dist/${{ matrix.platform.npm }}
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: write # the GitHub release
+      id-token: write # npm trusted publishing and provenance
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      # Trusted publishing needs npm 11.5.1 or later.
+      - run: npm install -g npm@11
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: npm-*
+      - name: Publish the platform packages
+        run: |
+          for dir in dist/npm-*/; do
+            chmod +x "$dir"bin/* || true
+            npm publish "$dir" --access public
+          done
+      - name: Publish the launcher
+        run: |
+          cp LICENSE npm/mcp/LICENSE
+          npm publish npm/mcp --access public
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '$0 ~ "^## " { if (found) exit; found = ($2 == v); next } found' CHANGELOG.md > notes.md
+          gh release create "$GITHUB_REF_NAME" --title "Scion Slicer $version" --notes-file notes.md

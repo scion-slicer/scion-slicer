@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "scion-slicer": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@scion-slicer/mcp@0.1.0"
+      ]
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "scion-slicer",
+  "owner": { "name": "Scion Slicer contributors" },
+  "metadata": {
+    "description": "Scion Slicer: an open, agent-driven resin slicer on the DragonFruit engine."
+  },
+  "plugins": [
+    {
+      "name": "scion-slicer",
+      "source": "./plugin/scion-slicer",
+      "description": "Resin 3D printing tools for your agent: check a model for resin traps, suction cups, peel problems and ledges before you slice it.",
+      "category": "3d-printing"
+    }
+  ]
+}

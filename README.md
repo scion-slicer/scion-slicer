@@ -9,6 +9,7 @@ Scion Slicer exposes resin printing tools over the [Model Context Protocol](http
 | Tool | What it does |
 |---|---|
 | `check_print` | Checks a binary STL in print orientation for resin traps, suction cups, peel problems and ledges. Each finding has its layer range, location, size, cause and a suggested action. |
+| `about` | The running version, the latest version on npm, and how to update. |
 
 ## How it relates to DragonFruit
 
@@ -29,15 +30,69 @@ cargo build --release
 
 `bootstrap.sh` checks out the submodules, applies the engine patches and generates DragonFruit's plugin encoder list. It is safe to run again; `--reset` starts the engine checkout over from the pinned commit.
 
-## Use it from an MCP client
+## Install
 
-The server speaks MCP over stdio. For Claude Code:
+Scion Slicer comes as an agent plugin: the MCP server plus a skill that tells the agent how to check a print and explain the results. One plugin works in Claude Code, GitHub Copilot, Codex and Cursor. The server comes from npm, so you need [Node.js](https://nodejs.org) 18 or later. Prebuilt servers are planned for macOS and Linux on x64 and arm64, and Windows on x64; only macOS on Apple Silicon has been tested so far.
+
+The npm packages are not published yet. These commands work from the first release on.
+
+**Claude Code**
+
+```
+/plugin install scion-slicer --marketplace scion-slicer/scion-slicer
+```
+
+Claude Code does not update plugins from third-party marketplaces on its own. To get updates automatically, open `/plugin`, go to Marketplaces, select scion-slicer and turn on auto-update.
+
+**GitHub Copilot CLI**
+
+```bash
+copilot plugin marketplace add scion-slicer/scion-slicer
+```
+
+```bash
+copilot plugin install scion-slicer@scion-slicer
+```
+
+**Codex**
+
+```bash
+codex plugin marketplace add scion-slicer/scion-slicer
+```
+
+```bash
+codex plugin add scion-slicer@scion-slicer
+```
+
+**Cursor:** import `https://github.com/scion-slicer/scion-slicer` as a team marketplace, then install scion-slicer from it.
+
+**Any other MCP client:** run the server directly. It speaks MCP over stdio.
+
+```bash
+npx -y @scion-slicer/mcp@latest
+```
+
+### Updates
+
+Once a day the server's launcher asks npm for the latest version number. Nothing about you or your files is sent. When a newer version exists, the server says so once per session, with the update command for your agent, and the `about` tool shows it too. Set `SCION_SLICER_NO_UPDATE_CHECK=1` to turn this off. Changes are listed in the [CHANGELOG](CHANGELOG.md).
+
+## Use a source build
 
 ```bash
 claude mcp add scion-slicer -- /path/to/scion-slicer/target/release/scion-slicer-mcp
 ```
 
-A plugin that bundles skills with the server, for Claude Code, Copilot, Codex and Cursor, is planned. See [docs/design/agent-plugin.md](docs/design/agent-plugin.md).
+A source build run directly never checks for updates.
+
+The plugin's design, including what each agent reads and how releases work, is in [docs/design/agent-plugin.md](docs/design/agent-plugin.md).
+
+## Releasing
+
+```bash
+node scripts/release.mjs 0.2.0
+```
+
+That writes the version into every file that carries it. Add a `## 0.2.0` section to [CHANGELOG.md](CHANGELOG.md), run `node scripts/release.mjs --check`, commit, and push a `v0.2.0` tag. The release workflow builds every platform in `npm/platforms.json`, publishes to npm and creates the GitHub release.
 
 ## Updating DragonFruit
 

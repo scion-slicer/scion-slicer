@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  versions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: node scripts/release.mjs --check
+
+  build:
+    # Builds and tests on every platform we ship npm packages for, so a platform that
+    # breaks shows up here before a release does.
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-latest, ubuntu-latest, ubuntu-24.04-arm, windows-latest]
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # The engine patches must apply byte for byte.
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: ./scripts/bootstrap.sh
+      - run: cargo test --release
+      - run: cargo build --release -p scion-slicer-mcp
+      - name: Start the server through the npm launcher
+        run: |
+          exe=target/release/scion-slicer-mcp
+          [[ "$RUNNER_OS" == Windows ]] && exe="$exe.exe"
+          SCION_SLICER_BINARY="$exe" node npm/mcp/bin/scion-slicer-mcp.js --version

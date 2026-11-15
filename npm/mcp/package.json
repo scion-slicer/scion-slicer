@@ -1,0 +1,36 @@
+{
+  "name": "@scion-slicer/mcp",
+  "version": "0.1.0",
+  "description": "Scion Slicer MCP server: resin 3D print checks for AI agents, on the DragonFruit slicing engine.",
+  "license": "AGPL-3.0-or-later",
+  "homepage": "https://github.com/scion-slicer/scion-slicer",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/scion-slicer/scion-slicer.git",
+    "directory": "npm/mcp"
+  },
+  "keywords": [
+    "mcp",
+    "resin",
+    "3d-printing",
+    "slicer",
+    "msla"
+  ],
+  "bin": {
+    "scion-slicer-mcp": "bin/scion-slicer-mcp.js"
+  },
+  "files": [
+    "bin",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "optionalDependencies": {
+    "@scion-slicer/mcp-darwin-arm64": "0.1.0",
+    "@scion-slicer/mcp-darwin-x64": "0.1.0",
+    "@scion-slicer/mcp-linux-x64": "0.1.0",
+    "@scion-slicer/mcp-linux-arm64": "0.1.0",
+    "@scion-slicer/mcp-win32-x64": "0.1.0"
+  }
+}
