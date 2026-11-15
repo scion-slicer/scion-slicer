@@ -2,6 +2,12 @@
 
 All notable changes to Scion Slicer. Versions follow [semantic versioning](https://semver.org); the plugin, the npm packages and the server always share one version.
 
+## 0.1.2
+
+- The plugin now runs the latest published server (`npx -y @scion-slicer/mcp@latest`) and passes its own version to it. Before, it pinned the server to its own version, and anyone installing or updating the plugin between a release reaching GitHub and reaching npm got a server that would not start ("No matching version").
+- Server fixes now arrive at your next session without a plugin update. The update notice and `about` now compare the plugin's version with the latest release, since the skills still update with the plugin.
+- `about` reports the plugin's version.
+
 ## 0.1.1
 
 No changes to the server or the plugin's behaviour. This release moves publishing onto npm trusted publishing.

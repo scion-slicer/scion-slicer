@@ -54,19 +54,37 @@ that they match (name, version, description, server command) so they cannot drif
 
 ## MCP entry
 
-Every MCP file runs the server through npx, pinned to the plugin's own version:
+Every MCP file runs the latest published server through npx, and tells it the plugin's
+version:
 
 ```json
-{ "command": "npx", "args": ["-y", "@scion-slicer/mcp@0.2.0"] }
+{
+  "command": "npx",
+  "args": ["-y", "@scion-slicer/mcp@latest"],
+  "env": { "SCION_SLICER_PLUGIN_VERSION": "0.1.2" }
+}
 ```
 
-No path variable is needed, which avoids Cursor's `${CURSOR_PLUGIN_ROOT}`-only quirk. It also
-keeps the skills and the server on the same version, because the plugin's version decides
-the server's. People who use the server without the plugin run the same command in any MCP
-client.
+No path variable is needed, which avoids Cursor's `${CURSOR_PLUGIN_ROOT}`-only quirk. People
+who use the server without the plugin run the same command in any MCP client.
+
+**Why `@latest` and not a pinned version.** The marketplace serves the plugin from `main`,
+and a release commit reaches `main` before its packages reach npm (the release waits for a
+maintainer's approval). The first design pinned the server to the plugin's version; for the
+14 minutes between pushing 0.1.1 and npm publishing it, every new install or update ran
+`npx @scion-slicer/mcp@0.1.1` and failed with "No matching version". Pinning the marketplace
+to a release tag would avoid that, but Copilot and Claude Code cannot add a marketplace at a
+tag. `@latest` always names a published version. `scripts/release.mjs --check` fails if an
+MCP file pins a version again.
+
+The trade-offs: server fixes reach users at their next session without a plugin update, and
+so would a bad server release (the maintainer's approval on every release is the guard). The
+skills still update only with the plugin, so the update notice measures the plugin's version
+(see below).
 
 The cost is that the first run needs network access and Node, and it can take a few seconds.
-After that npx serves the package from its cache.
+After that npx serves the package from its cache, re-checking npm for `latest` at most every
+few minutes.
 
 ## npm packaging
 
@@ -121,6 +139,10 @@ code at all.
 - A source build run without the launcher has no file, so it never shows a notice.
 
 **Where the notice shows up**
+- **What counts as out of date:** the plugin's version (`SCION_SLICER_PLUGIN_VERSION`) when
+  the server runs from the plugin, since the server itself is always `@latest`; otherwise the
+  server's own version. The note then says "The Scion Slicer plugin X is available (you have
+  Y)" or "Scion Slicer X is available (this is Y)".
 - **The first tool result after the server learns of it** gets one extra content block with
   the update command for the client in use. The client is recognised from the name it sends
   when it connects. This is the channel that reaches people, because the agent reads it and

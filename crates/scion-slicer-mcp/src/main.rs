@@ -137,6 +137,7 @@ impl ScionSlicer {
         let info = serde_json::json!({
             "name": "scion-slicer",
             "version": update::VERSION,
+            "plugin_version": update::plugin_version(),
             "latest_known": latest,
             "update_available": newer.is_some(),
             "how_to_update": newer.as_ref().map(|_| update::how_to_update(client)),

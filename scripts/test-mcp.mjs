@@ -14,6 +14,7 @@
 // - the update note appears on the first tool result only, with the right command;
 // - about reports the update;
 // - the launcher asks the registry once a day, not once per session;
+// - run from the plugin (SCION_SLICER_PLUGIN_VERSION set), the note is about the plugin;
 // - SCION_SLICER_NO_UPDATE_CHECK=1 turns all of it off.
 
 import { spawn } from 'node:child_process';
@@ -195,11 +196,19 @@ async function main() {
     await s.close();
     check(registry.hits.length === 1, `registry asked ${registry.hits.length} times`);
 
-    // 2. Second session the same day: no new request, the note still appears.
-    s = new Session(env);
+    // 2. Second session the same day, run from the plugin: no new request, and the note
+    //    is about the plugin's version.
+    s = new Session({ ...env, SCION_SLICER_PLUGIN_VERSION: '0.0.1' });
     await s.start('codex-mcp-client');
     const again = await s.callTool('check_print', { stl_path: stl });
-    check(again.content.length === 2 && again.content[1].text.includes('codex'), 'no Codex note in the second session');
+    check(again.content.length === 2, 'no update note in the second session');
+    const pluginNote = again.content[1].text;
+    check(
+      pluginNote.includes(`plugin ${FAKE_LATEST} is available (you have 0.0.1)`) && pluginNote.includes('codex'),
+      `plugin note: ${pluginNote}`,
+    );
+    const aboutPlugin = JSON.parse((await s.callTool('about')).content[0].text);
+    check(aboutPlugin.plugin_version === '0.0.1', `about: ${JSON.stringify(aboutPlugin)}`);
     await s.close();
     check(registry.hits.length === 1, `registry asked again the same day (${registry.hits.length} times)`);
 

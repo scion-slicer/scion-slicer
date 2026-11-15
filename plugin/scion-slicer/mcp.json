@@ -6,8 +6,11 @@
       "command": "npx",
       "args": [
         "-y",
-        "@scion-slicer/mcp@0.1.1"
-      ]
+        "@scion-slicer/mcp@latest"
+      ],
+      "env": {
+        "SCION_SLICER_PLUGIN_VERSION": "0.1.2"
+      }
     }
   }
 }

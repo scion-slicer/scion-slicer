@@ -5,6 +5,11 @@
 //! path it passes in `SCION_SLICER_UPDATE_FILE`. The server reads that file when it needs
 //! to know whether a newer version exists. Without the launcher (a source build) there is
 //! no file and no notice.
+//!
+//! The agent plugin always runs the latest server (`npx @scion-slicer/mcp@latest`), so
+//! the server itself is rarely out of date; the plugin's skills are. The plugin passes its
+//! own version in `SCION_SLICER_PLUGIN_VERSION`, and when it is set, updates are measured
+//! against the plugin rather than the server.
 
 use serde::Deserialize;
 
@@ -13,6 +18,9 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Where the launcher says the update file is.
 pub const UPDATE_FILE_ENV: &str = "SCION_SLICER_UPDATE_FILE";
+
+/// The plugin's version, set in the plugin's MCP files.
+pub const PLUGIN_VERSION_ENV: &str = "SCION_SLICER_PLUGIN_VERSION";
 
 /// Set to turn the check off; the launcher honours it, and so does the server.
 pub const OPT_OUT_ENV: &str = "SCION_SLICER_NO_UPDATE_CHECK";
@@ -41,9 +49,18 @@ pub fn latest_known() -> Option<String> {
     file.latest.filter(|v| parse(v).is_some())
 }
 
-/// The latest known version, when it is newer than the running one.
+/// The plugin's version, when the server runs from the agent plugin.
+pub fn plugin_version() -> Option<String> {
+    std::env::var(PLUGIN_VERSION_ENV)
+        .ok()
+        .filter(|v| parse(v).is_some())
+}
+
+/// The latest known version, when it is newer than what is installed: the plugin when
+/// running from it, otherwise this server.
 pub fn newer_version() -> Option<String> {
-    latest_known().filter(|latest| is_newer(latest, VERSION))
+    let installed = plugin_version().unwrap_or_else(|| VERSION.to_string());
+    latest_known().filter(|latest| is_newer(latest, &installed))
 }
 
 /// `X.Y.Z` with plain numbers. Pre-releases and anything else are not offered as updates.
@@ -114,9 +131,18 @@ pub fn how_to_update(client: Client) -> &'static str {
 
 /// The one-line notice.
 pub fn notice(latest: &str, client: Client) -> String {
+    notice_for(latest, plugin_version().as_deref(), client)
+}
+
+fn notice_for(latest: &str, plugin: Option<&str>, client: Client) -> String {
+    let what = match plugin {
+        Some(installed) => {
+            format!("The Scion Slicer plugin {latest} is available (you have {installed})")
+        }
+        None => format!("Scion Slicer {latest} is available (this is {VERSION})"),
+    };
     format!(
-        "Scion Slicer {latest} is available (this is {VERSION}). To update, {}. \
-         Changes: {CHANGELOG_URL}",
+        "{what}. To update, {}. Changes: {CHANGELOG_URL}",
         how_to_update(client)
     )
 }
@@ -140,6 +166,19 @@ mod tests {
         assert!(!is_newer("latest", "0.1.0"));
         assert!(!is_newer("1.2", "0.1.0"));
         assert!(!is_newer("1.2.3.4", "0.1.0"));
+    }
+
+    #[test]
+    fn notice_names_the_plugin_when_running_from_it() {
+        let from_plugin = notice_for("0.2.0", Some("0.1.1"), Client::CopilotCli);
+        assert!(
+            from_plugin.starts_with("The Scion Slicer plugin 0.2.0 is available (you have 0.1.1)")
+        );
+        assert!(from_plugin.contains("copilot plugin update"));
+        let plain = notice_for("0.2.0", None, Client::Other);
+        assert!(plain.starts_with(&format!(
+            "Scion Slicer 0.2.0 is available (this is {VERSION})"
+        )));
     }
 
     #[test]

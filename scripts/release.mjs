@@ -6,9 +6,13 @@
 //   node scripts/release.mjs --check vX.Y.Z   ...and that they agree with this tag
 //
 // Files: Cargo.toml (workspace), Cargo.lock (our crates), npm/mcp/package.json (its
-// version and the platform packages it depends on), both plugin manifests, the server
-// version pinned in both MCP files. CHANGELOG.md must have a "## X.Y.Z" section.
-// The marketplace entry has no version: the plugin manifests carry it.
+// version and the platform packages it depends on), both plugin manifests, and the plugin
+// version passed to the server in both MCP files. CHANGELOG.md must have a "## X.Y.Z"
+// section. The marketplace entry has no version: the plugin manifests carry it.
+//
+// The MCP files run `@scion-slicer/mcp@latest`, never a pinned version: the plugin is
+// served from main as soon as it is pushed, before the release is on npm, and a pinned
+// version would not exist yet.
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -21,6 +25,7 @@ const MANIFESTS = [`${PLUGIN}/plugin.json`, `${PLUGIN}/.claude-plugin/plugin.jso
 const MCP_FILES = [`${PLUGIN}/mcp.json`, `${PLUGIN}/.mcp.json`];
 const CRATES = ['scion-slicer-core', 'scion-slicer-mcp'];
 const SERVER_PACKAGE = '@scion-slicer/mcp';
+const PLUGIN_VERSION_ENV = 'SCION_SLICER_PLUGIN_VERSION';
 
 const read = (file) => readFileSync(join(root, file), 'utf8');
 const readJson = (file) => JSON.parse(read(file));
@@ -36,9 +41,8 @@ function lockVersion(crate) {
   return read('Cargo.lock').match(re)?.[1];
 }
 
-function serverArgs(file) {
-  const server = readJson(file).mcpServers['scion-slicer'];
-  return { command: server.command, args: server.args };
+function server(file) {
+  return readJson(file).mcpServers['scion-slicer'];
 }
 
 function platformPackages(version) {
@@ -74,11 +78,13 @@ function check(tag) {
     }
   }
 
-  const servers = MCP_FILES.map(serverArgs);
+  const servers = MCP_FILES.map(server);
   if (JSON.stringify(servers[0]) !== JSON.stringify(servers[1])) problems.push('MCP files start the server differently');
   for (const [i, file] of MCP_FILES.entries()) {
-    const pinned = servers[i].args.find((a) => a.startsWith(`${SERVER_PACKAGE}@`));
-    expect(`${file} server`, pinned?.slice(SERVER_PACKAGE.length + 1));
+    if (!servers[i].args.includes(`${SERVER_PACKAGE}@latest`)) {
+      problems.push(`${file}: must run ${SERVER_PACKAGE}@latest, not a pinned version`);
+    }
+    expect(`${file} ${PLUGIN_VERSION_ENV}`, servers[i].env?.[PLUGIN_VERSION_ENV]);
   }
 
   const marketplace = readJson('.claude-plugin/marketplace.json');
@@ -123,8 +129,8 @@ function stamp(version) {
   }
   for (const file of MCP_FILES) {
     const config = readJson(file);
-    const server = config.mcpServers['scion-slicer'];
-    server.args = server.args.map((a) => (a.startsWith(`${SERVER_PACKAGE}@`) ? `${SERVER_PACKAGE}@${version}` : a));
+    const entry = config.mcpServers['scion-slicer'];
+    entry.env = { ...entry.env, [PLUGIN_VERSION_ENV]: version };
     writeJson(file, config);
   }
   console.log(`Wrote ${version}. Next:

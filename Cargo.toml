@@ -5,7 +5,7 @@ members = ["crates/scion-slicer-core", "crates/scion-slicer-mcp"]
 exclude = ["vendor"]
 
 [workspace.package]
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 license = "AGPL-3.0-or-later"
 repository = "https://github.com/scion-slicer/scion-slicer"
