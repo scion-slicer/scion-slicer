@@ -41,8 +41,23 @@ jobs:
       - run: ./scripts/bootstrap.sh
       - run: cargo test --release
       - run: cargo build --release -p scion-slicer-mcp
-      - name: Start the server through the npm launcher
+      # Packs this platform's npm package and the launcher, installs them the way npm
+      # would for a user, and runs MCP sessions through the same npx command the plugin
+      # uses: check_print on a test part, the update note and about, and the opt-out.
+      - name: MCP session through an npm install
         run: |
+          T=$(cygpath -m "$RUNNER_TEMP" 2>/dev/null || echo "$RUNNER_TEMP")
+          key=$(node -p 'process.platform + "-" + process.arch')
+          version=$(node -p 'require("./npm/mcp/package.json").version')
           exe=target/release/scion-slicer-mcp
           [[ "$RUNNER_OS" == Windows ]] && exe="$exe.exe"
-          SCION_SLICER_BINARY="$exe" node npm/mcp/bin/scion-slicer-mcp.js --version
+          node scripts/npm-platform.mjs "$key" "$exe" "$T/pkg/$key"
+          cp LICENSE npm/mcp/LICENSE
+          mkdir -p "$T/tgz" "$T/app"
+          npm pack "$T/pkg/$key" ./npm/mcp --pack-destination "$T/tgz" --silent
+          rm npm/mcp/LICENSE
+          root=$PWD
+          cd "$T/app"
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund "$T"/tgz/*.tgz
+          node "$root/scripts/test-mcp.mjs" npx -y "@scion-slicer/mcp@$version"
