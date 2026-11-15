@@ -24,8 +24,8 @@ jobs:
     outputs:
       platforms: ${{ steps.platforms.outputs.json }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Check versions (against the tag, when there is one)
@@ -50,10 +50,10 @@ jobs:
         shell: bash
     steps:
       - run: git config --global core.autocrlf false
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - run: ./scripts/bootstrap.sh
@@ -64,7 +64,7 @@ jobs:
           exe=target/${{ matrix.platform.target }}/dist/scion-slicer-mcp
           [[ "${{ matrix.platform.os }}" == win32 ]] && exe="$exe.exe"
           node scripts/npm-platform.mjs ${{ matrix.platform.npm }} "$exe" "dist/${{ matrix.platform.npm }}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: npm-${{ matrix.platform.npm }}
           path: dist/${{ matrix.platform.npm }}
@@ -79,12 +79,12 @@ jobs:
     env:
       DRY_RUN: --dry-run
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - run: npm install -g npm@11
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           pattern: npm-*
@@ -108,14 +108,14 @@ jobs:
       contents: write # the GitHub release
       id-token: write # npm trusted publishing and provenance
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
       # Trusted publishing needs npm 11.5.1 or later.
       - run: npm install -g npm@11
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           pattern: npm-*
