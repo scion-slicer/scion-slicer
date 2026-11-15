@@ -19,7 +19,8 @@ git -C "$root" submodule update --init --recursive
 
 shopt -s nullglob
 patches=("$root"/patches/dragonfruit/*.patch)
-want="$(cat "${patches[@]}" /dev/null | shasum | cut -d' ' -f1)"
+# git hash-object rather than shasum: Git for Windows has no shasum.
+want="$(cat "${patches[@]}" /dev/null | git hash-object --stdin)"
 
 if [[ $reset == 1 ]]; then
   echo "resetting vendor/DragonFruit to the pinned commit"
