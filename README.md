@@ -32,7 +32,7 @@ cargo build --release
 
 ## Install
 
-Scion Slicer comes as an agent plugin: the MCP server plus a skill that tells the agent how to check a print and explain the results. One plugin works in Claude Code, GitHub Copilot, Codex and Cursor. The server comes from npm, so you need [Node.js](https://nodejs.org) 18 or later. Prebuilt servers are planned for macOS and Linux on x64 and arm64, and Windows on x64; only macOS on Apple Silicon has been tested so far.
+Scion Slicer comes as an agent plugin: the MCP server plus a skill that tells the agent how to check a print and explain the results. One plugin works in Claude Code, GitHub Copilot, Codex and Cursor. The server comes from npm, so you need [Node.js](https://nodejs.org) 18 or later. Prebuilt servers are planned for macOS and Linux on x64 and arm64, and Windows on x64. CI builds and tests on macOS (Apple Silicon), Linux x64, Linux arm64 and Windows x64; Intel macOS is cross-compiled and not tested.
 
 The npm packages are not published yet. These commands work from the first release on.
 

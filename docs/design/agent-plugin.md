@@ -135,10 +135,11 @@ code at all.
 
 ## Platforms
 
-The engine has only been built and tested on Apple Silicon macOS. DragonFruit's toolchain
-file lists only Apple targets. Linux x64/arm64 and Windows x64 need a CI build and the test
-suite to pass before we publish packages for them. Until then the launcher prints a clear
-"no build for this platform yet" message with a link to build from source.
+CI builds and tests the engine on Apple Silicon macOS, Linux x64, Linux arm64 and Windows
+x64, even though DragonFruit's own toolchain file lists only Apple targets. Intel macOS is
+cross-compiled by the release workflow and not run anywhere. On any platform without a
+package, the launcher prints a "no build for this platform yet" message with a link to build
+from source.
 
 ## What changed while building it
 
@@ -165,8 +166,10 @@ suite to pass before we publish packages for them. Until then the launcher print
   that do not exist yet); `npx -y @scion-slicer/mcp@0.1.0` ran with the registry unreachable.
 - Update notice: against a fake registry, one request per day, the note on the first tool
   result only, the command matching the client, silence when offline or opted out.
-- Not tested: Cursor (no CLI here), the GitHub workflows (they run on the first push), and
-  any platform but macOS on Apple Silicon.
+- CI (`ci.yml`): builds, runs the tests and starts the server through the launcher on macOS
+  (Apple Silicon), Linux x64, Linux arm64 and Windows x64. All pass.
+- Not tested: Cursor (no CLI here), the release workflow (it runs on the first tag), and
+  Intel macOS, which the release cross-compiles on Apple Silicon without running it.
 
 ## Open questions
 
