@@ -1,0 +1,38 @@
+# Weekly update pull requests. Security updates are separate: they are turned on in the
+# repository settings and open as soon as a fix exists.
+#
+# vendor/DragonFruit (a git submodule) is left out on purpose: moving it can break the
+# engine patches in patches/dragonfruit, so it is updated by hand (see the README).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ['*']
+
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: deps
+    groups:
+      # Minor and patch updates in one PR; major updates get their own.
+      cargo:
+        update-types: [minor, patch]
+
+  # The launcher has no dependencies today besides our own platform packages, which the
+  # release script sets. This entry is here for dependencies it gains later.
+  - package-ecosystem: npm
+    directory: /npm/mcp
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: deps
+    ignore:
+      - dependency-name: '@scion-slicer/*'

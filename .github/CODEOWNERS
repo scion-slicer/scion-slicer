@@ -1,0 +1,18 @@
+# Changes to these paths decide what gets built, published and run on people's machines,
+# so they need a maintainer's review (enforced by the main branch ruleset).
+
+# CI, release workflow, Dependabot, and this file
+/.github/            @cormierjohn
+# Build, release and publish scripts
+/scripts/            @cormierjohn
+# The npm launcher and the platform list
+/npm/                @cormierjohn
+# The plugin, including the command agents run to start the server
+/plugin/             @cormierjohn
+# Engine patches and where the engine comes from
+/patches/            @cormierjohn
+/.gitmodules         @cormierjohn
+# Dependencies and toolchain
+/Cargo.toml          @cormierjohn
+/Cargo.lock          @cormierjohn
+/rust-toolchain.toml @cormierjohn
