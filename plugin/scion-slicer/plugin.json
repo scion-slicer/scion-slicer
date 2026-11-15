@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "scion-slicer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Resin 3D printing tools for your agent: check a model for resin traps, suction cups, peel problems and ledges before you slice it.",
   "author": {
     "name": "Scion Slicer contributors",

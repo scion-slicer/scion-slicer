@@ -1,6 +1,6 @@
 # Design: one agent plugin for every coding agent
 
-Status: built as 0.1.0, not yet published to npm. Researched and built November 2026.
+Status: released. 0.1.0 was published to npm on November 15, 2026. Researched and built November 2026.
 The notes under [What changed while building it](#what-changed-while-building-it) say where
 the build differs from the first draft.
 
@@ -171,17 +171,25 @@ from source.
 - Not tested: Cursor (no CLI here), the release workflow (it runs on the first tag), and
   Intel macOS, which the release cross-compiles on Apple Silicon without running it.
 
+## How the first release went
+
+- **All five platforms shipped.** CI builds and tests on four of them, and the Intel macOS
+  build was tested under Rosetta before publishing.
+- **npm trusted publishing needs a package that already exists,** and our token-based first
+  release failed: npm asked for a one-time password, because the token could not skip 2FA
+  (npm is phasing out tokens that can). So 0.1.0 was published by hand, with the
+  maintainer's 2FA, from the exact packages the release workflow had built. It has no
+  provenance.
+- **From 0.1.1 on, releases use trusted publishing only:** a `v*` tag (only maintainers can
+  create one), the maintainer's approval on the `npm` environment, then npm accepts the
+  publish from `release.yml` in that environment. No token is stored anywhere. A trusted
+  publisher that has not been used for a publish within 2 days of being set up expires.
+
 ## Open questions
 
-1. Which platforms ship in the first release. `npm/platforms.json` lists five; a platform
-   that fails in CI can be removed from it until it is fixed.
-2. Whether the one-line update note in tool results is acceptable, or whether it should be
+1. Whether the one-line update note in tool results is acceptable, or whether it should be
    opt-in.
-3. The `@scion-slicer` npm org has to be created by the project owner before the first
-   publish, and each package needs a trusted publisher set up on npm (repository
-   `scion-slicer/scion-slicer`, workflow `release.yml`, environment `npm`). Check npm's
-   docs on whether that can be done before a package's first version exists.
-4. Whether to add a Cursor marketplace file now or rely on team git imports at first.
+2. Whether to add a Cursor marketplace file now or rely on team git imports at first.
 
 ## Sources
 

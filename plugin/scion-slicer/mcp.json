@@ -6,7 +6,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@scion-slicer/mcp@0.1.0"
+        "@scion-slicer/mcp@0.1.1"
       ]
     }
   }

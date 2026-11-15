@@ -4,10 +4,9 @@ name: Release
 # npm/platforms.json, publishes the platform packages and then the launcher to npm, and
 # creates the GitHub release from the CHANGELOG section.
 #
-# Publishing uses npm trusted publishing once it is set up for each package. npm only
-# allows that on a package that already exists, so the first release uses NPM_TOKEN, a
-# short-lived token stored in the "npm" environment. When trusted publishing is set up,
-# delete that secret: with no token, npm publishes through trusted publishing.
+# Publishing uses npm trusted publishing: npm accepts a publish only from this workflow,
+# in the "npm" environment, and adds a provenance statement. No token is stored. The
+# environment admits only v* tags and waits for a maintainer's approval.
 
 on:
   push:
@@ -71,12 +70,40 @@ jobs:
           path: dist/${{ matrix.platform.npm }}
           if-no-files-found: error
 
+  # Run by hand (workflow_dispatch): everything a release does except publishing. It
+  # stays out of the "npm" environment, which admits only v* tags.
+  dry-run:
+    if: github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      DRY_RUN: --dry-run
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: npm install -g npm@11
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: npm-*
+      - name: Publish the platform packages (dry run)
+        run: |
+          for dir in dist/npm-*/; do
+            chmod +x "$dir"bin/* || true
+            ./scripts/npm-publish-once.sh "$dir"
+          done
+      - name: Publish the launcher (dry run)
+        run: |
+          cp LICENSE npm/mcp/LICENSE
+          ./scripts/npm-publish-once.sh npm/mcp
+
   publish:
+    if: github.event_name == 'push'
     needs: build
     runs-on: ubuntu-latest
     environment: npm
-    env:
-      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && '--dry-run' || '' }}
     permissions:
       contents: write # the GitHub release
       id-token: write # npm trusted publishing and provenance
@@ -93,24 +120,16 @@ jobs:
           path: dist
           pattern: npm-*
       - name: Publish the platform packages
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          # Trusted publishing adds provenance on its own; a token needs this.
-          NPM_CONFIG_PROVENANCE: 'true'
         run: |
           for dir in dist/npm-*/; do
             chmod +x "$dir"bin/* || true
             ./scripts/npm-publish-once.sh "$dir"
           done
       - name: Publish the launcher
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: 'true'
         run: |
           cp LICENSE npm/mcp/LICENSE
           ./scripts/npm-publish-once.sh npm/mcp
       - name: GitHub release
-        if: github.event_name != 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

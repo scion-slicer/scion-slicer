@@ -1265,7 +1265,7 @@ dependencies = [
 
 [[package]]
 name = "scion-slicer-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "dragonfruit-islands",
  "dragonfruit-slicing-engine",
@@ -1276,7 +1276,7 @@ dependencies = [
 
 [[package]]
 name = "scion-slicer-mcp"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "rmcp",
  "schemars",
