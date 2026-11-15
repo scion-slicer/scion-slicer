@@ -37,6 +37,8 @@ The server speaks MCP over stdio. For Claude Code:
 claude mcp add scion-slicer -- /path/to/scion-slicer/target/release/scion-slicer-mcp
 ```
 
+A plugin that bundles skills with the server, for Claude Code, Copilot, Codex and Cursor, is planned. See [docs/design/agent-plugin.md](docs/design/agent-plugin.md).
+
 ## Updating DragonFruit
 
 ```bash
