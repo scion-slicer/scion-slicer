@@ -5,9 +5,11 @@
 //! the engine are carried as patches in `patches/dragonfruit/`.
 //!
 //! - [`checks`]: print checks (resin traps, suction cups, peel alerts, ledges).
+//! - [`slice`]: slicing a mesh into a printer file.
 //! - [`stl`]: loading meshes.
 
 pub mod checks;
+pub mod slice;
 pub mod stl;
 
 use std::path::Path;
