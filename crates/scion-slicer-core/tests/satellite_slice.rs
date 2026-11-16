@@ -4,7 +4,7 @@
 use std::io::Cursor;
 use std::path::PathBuf;
 
-use scion_slicer_core::slice::{slice_to_goo, Placement};
+use scion_slicer_core::slice::{slice_to_goo, Placement, SliceOptions};
 use scion_slicer_core::stl;
 use scion_slicer_goo::rle::decode_layer;
 use scion_slicer_goo::{GooFile, LayerSettings, Machine, Motion, Resin, Waits};
@@ -48,8 +48,8 @@ fn boxes_slice_to_satellites_pixels() {
     for (model, reference) in [("small", "00-small-baseline"), ("wide", "03-wide")] {
         let mesh = stl::load(&dir.join(format!("{model}.stl"))).unwrap();
         // SatelLite left each box where it was loaded: its corner on the screen's corner.
-        let placement = Placement::Corner { x_mm: 0.0, y_mm: 0.0 };
-        let (out, summary) = slice_to_goo(&mesh, Cursor::new(Vec::new()), &machine, &typed_in(), placement).unwrap();
+        let options = SliceOptions { placement: Placement::Corner { x_mm: 0.0, y_mm: 0.0 }, ..Default::default() };
+        let (out, summary) = slice_to_goo(&mesh, Cursor::new(Vec::new()), &machine, &typed_in(), &options).unwrap();
         let ours_bytes = out.into_inner();
         let theirs_bytes = std::fs::read(dir.join(format!("{reference}.goo"))).unwrap();
         let (ours, theirs) = (GooFile::parse(&ours_bytes).unwrap(), GooFile::parse(&theirs_bytes).unwrap());
