@@ -2,6 +2,13 @@
 
 All notable changes to Scion Slicer. Versions follow [semantic versioning](https://semver.org); the plugin, the npm packages and the server always share one version.
 
+## Unreleased
+
+- **Slicing.** New `slice` MCP tool: turns a binary STL into a `.goo` print file for ELEGOO printers, with optional rotation, position and bottom-layer (elephant's foot) compensation, and reports the layer count, print time, volume and weight.
+- New `list_printers` and `list_resins` tools. When ELEGOO SatelLite is installed, they use its printers and resin profiles, including the lift settings SatelLite hides from its Parameters tab; otherwise a built-in Saturn 4 Ultra 16K with two profiles.
+- New `slice-resin-print` skill.
+- New `scion-slicer-goo` crate: writes `.goo` files exactly as ELEGOO SatelLite 1.0.2.43 does (version V3.0, advance mode off, SatelLite's layer encoding, transition ramp and print-time estimate), checked byte for byte against ten reference slices made with SatelLite.
+
 ## 0.1.2
 
 - The plugin now runs the latest published server (`npx -y @scion-slicer/mcp@latest`) and passes its own version to it. Before, it pinned the server to its own version, and anyone installing or updating the plugin between a release reaching GitHub and reaching npm got a server that would not start ("No matching version").

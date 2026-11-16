@@ -8,7 +8,7 @@
     {
       "name": "scion-slicer",
       "source": "./plugin/scion-slicer",
-      "description": "Resin 3D printing tools for your agent: check a model for resin traps, suction cups, peel problems and ledges before you slice it.",
+      "description": "Resin 3D printing tools for your agent: check a model for resin traps, suction cups, peel problems and ledges, then slice it into a print file for your printer.",
       "category": "3d-printing"
     }
   ]

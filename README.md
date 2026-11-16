@@ -9,7 +9,14 @@ Scion Slicer exposes resin printing tools over the [Model Context Protocol](http
 | Tool | What it does |
 |---|---|
 | `check_print` | Checks a binary STL in print orientation for resin traps, suction cups, peel problems and ledges. Each finding has its layer range, location, size, cause and a suggested action. |
+| `list_printers` | The printers it can slice for: ELEGOO SatelLite's when it's installed, otherwise the built-in ones. |
+| `list_resins` | A printer's resin profiles, with their layer height, exposures, layer counts and waits. |
+| `slice` | Slices a binary STL into a print file (`.goo` for ELEGOO printers), with optional rotation, position and bottom-layer (elephant's foot) compensation. Reports the layer count, print time, volume and weight. |
 | `about` | The running version, the latest version on npm, and how to update. |
+
+### Print files
+
+For ELEGOO printers, Scion Slicer writes `.goo` files the way ELEGOO SatelLite does: the same layer encoding, header fields and print-time estimate, byte for byte, as its tests check against slices made with SatelLite. The design and the rules are in [docs/design/goo-writer.md](docs/design/goo-writer.md) and [corpus/satellite](corpus/satellite/saturn-4-ultra-16k/README.md). So far that covers the Saturn 4 Ultra 16K, with anti-aliasing off.
 
 ## How it relates to DragonFruit
 
@@ -32,7 +39,7 @@ cargo build --release
 
 ## Install
 
-Scion Slicer comes as an agent plugin: the MCP server plus a skill that tells the agent how to check a print and explain the results. One plugin works in Claude Code, GitHub Copilot, Codex and Cursor. The server comes from npm, so you need [Node.js](https://nodejs.org) 18 or later. Prebuilt servers are published for macOS (Apple Silicon and Intel), Linux (x64 and arm64) and Windows (x64).
+Scion Slicer comes as an agent plugin: the MCP server plus skills that tell the agent how to check a print, explain the results and slice it. One plugin works in Claude Code, GitHub Copilot, Codex and Cursor. The server comes from npm, so you need [Node.js](https://nodejs.org) 18 or later. Prebuilt servers are published for macOS (Apple Silicon and Intel), Linux (x64 and arm64) and Windows (x64).
 
 **Claude Code**
 

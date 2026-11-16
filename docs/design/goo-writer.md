@@ -1,6 +1,7 @@
 # Design: a `.goo` writer that matches ELEGOO SatelLite
 
-Status: being built (crate `scion-slicer-goo`).
+Status: built (crate `scion-slicer-goo`, used by `slice` in `scion-slicer-core` and the MCP
+`slice` tool). Matches SatelLite byte for byte in tests; not yet test-printed.
 
 ## Why
 
