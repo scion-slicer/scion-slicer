@@ -20,6 +20,7 @@
 
 pub mod read;
 pub mod rle;
+pub mod satellite;
 pub mod settings;
 pub mod writer;
 

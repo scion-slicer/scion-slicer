@@ -158,3 +158,23 @@ impl std::fmt::Debug for Rec<'_, '_> {
         )
     }
 }
+
+/// The SirayaTech Fast (Navy Grey) profile read from this computer's SatelLite must be the
+/// one that reproduced SatelLite's slices above.
+#[test]
+fn satellite_profile_matches_the_reference_settings() {
+    let Some(path) = scion_slicer_goo::satellite::default_machines_path() else {
+        eprintln!("skipping: SatelLite isn't installed here");
+        return;
+    };
+    let printers = scion_slicer_goo::satellite::load_machines(&path).unwrap();
+    let Some(printer) = printers.iter().find(|p| p.machine == Machine::saturn_4_ultra_16k()) else {
+        eprintln!("skipping: no Saturn 4 Ultra 16K in SatelLite");
+        return;
+    };
+    let Some(navy) = printer.resins.iter().find(|r| r.profile_name == "SirayaTech - Fast (Navy Grey)") else {
+        eprintln!("skipping: no SirayaTech Fast (Navy Grey) profile");
+        return;
+    };
+    assert_eq!(*navy, siraya());
+}
