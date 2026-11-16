@@ -118,3 +118,21 @@ repository.
   SatelLite's project file places the part 14.1 mm further along Y than where SatelLite
   actually printed it. Our placement matches SatelLite's printed position for parts loaded
   from STL (the reference boxes); the offset only matters when reading SatelLite projects.
+
+## Checked with UVtools
+
+UVtools (`UVtoolsCmd compare --full-mode`) is a second, independent reader of the format.
+Comparing our slice of the small box with SatelLite's `11-small-siraya-profile.goo`:
+
+- With our software name ("Scion Slicer"), UVtools reports every print setting and every
+  layer the same, except its own resin estimate (0.76 ml for ours, 0.78 ml for SatelLite's,
+  for an 0.80 ml box). Byte for byte, the files differ only in the software name and
+  version, the time stamp, the previews and SatelLite's leftover string bytes, so UVtools
+  must estimate resin differently depending on which software wrote the file.
+- With the software name and version changed to SatelLite's in a scratch copy, UVtools
+  reports no differences at all.
+
+So at least one reader treats files differently by the name of the software that wrote
+them. Whether the printer's firmware does is not known. If a print from our file behaves
+differently from SatelLite's, the software name is the first thing to try; `FileInfo` lets
+the caller set it.
