@@ -98,3 +98,23 @@ The reference slices are the tests. For each one, the test reads SatelLite's fil
 its layers, writes them again with the same settings, and compares. Every layer must be
 byte-identical, and every header field must match except the software name and version,
 the time stamp, the previews and the leftover string bytes.
+
+## Checked on real parts
+
+Beyond the reference boxes, two of the user's own prints were sliced with `examples/slice`
+and compared with SatelLite's files of them (`examples/compare`). Neither part is in the
+repository.
+
+- **The bottom-compensation test plate** (60 layers), turned 48.81° as it sat in SatelLite:
+  the print time (1010 s), volume and weight match exactly. The layer images match as they
+  are to within 0.09% of the lit pixels (the angle was estimated, not known), and every
+  mirrored or turned variant differs by millions: the images face the same way.
+- **A production mold** (2,370 layers, 118.5 mm tall), rebuilt from SatelLite's own project
+  file, so the mesh and its 22° turn are exactly what SatelLite sliced. Our file came to
+  69,322,758 bytes against SatelLite's 69,321,395. Sampled layers differ in 245–1,055
+  pixels out of about 16 million lit ones, at the edges. Slicing it took 5.1 s and 1.7 GB of
+  memory on an Apple-silicon Mac.
+
+  SatelLite's project file places the part 14.1 mm further along Y than where SatelLite
+  actually printed it. Our placement matches SatelLite's printed position for parts loaded
+  from STL (the reference boxes); the offset only matters when reading SatelLite projects.
