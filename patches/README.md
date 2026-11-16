@@ -6,7 +6,7 @@ built on the engine's public API belongs in `crates/` instead.
 
 | Patches | What | Upstream |
 |---|---|---|
-| `dragonfruit/0001`–`0003` | Bottom-layer contour compensation (elephant's foot), RLE-native | [Open-Resin-Alliance/DragonFruit#1016](https://github.com/Open-Resin-Alliance/DragonFruit/pull/1016) |
+| `dragonfruit/0001`–`0003` | Bottom-layer contour compensation (elephant's foot), RLE-native | [Open-Resin-Alliance/DragonFruit#1016](https://github.com/Open-Resin-Alliance/DragonFruit/pull/1016), closed without merging. Carried on the `dev` branch of [cormierjohn/DragonFruit](https://github.com/cormierjohn/DragonFruit/tree/dev) |
 
 ## Lifecycle
 
