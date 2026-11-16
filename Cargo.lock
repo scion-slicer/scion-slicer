@@ -1270,9 +1270,14 @@ dependencies = [
  "dragonfruit-islands",
  "dragonfruit-slicing-engine",
  "rayon",
+ "scion-slicer-goo",
  "serde",
  "serde_json",
 ]
+
+[[package]]
+name = "scion-slicer-goo"
+version = "0.1.2"
 
 [[package]]
 name = "scion-slicer-mcp"

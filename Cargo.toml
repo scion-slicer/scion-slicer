@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/scion-slicer-core", "crates/scion-slicer-mcp"]
+members = ["crates/scion-slicer-core", "crates/scion-slicer-goo", "crates/scion-slicer-mcp"]
 # DragonFruit's crates are path dependencies, not members.
 exclude = ["vendor"]
 
@@ -14,6 +14,7 @@ repository = "https://github.com/scion-slicer/scion-slicer"
 dragonfruit-slicing-engine = { path = "vendor/DragonFruit/rust/dragonfruit-slicing-engine" }
 dragonfruit-islands = { path = "vendor/DragonFruit/rust/dragonfruit-islands" }
 scion-slicer-core = { path = "crates/scion-slicer-core" }
+scion-slicer-goo = { path = "crates/scion-slicer-goo" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rayon = "1.10"
