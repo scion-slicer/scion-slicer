@@ -54,7 +54,9 @@ pub fn load_machines(path: &Path) -> Result<Vec<SatellitePrinter>, String> {
 
 pub fn parse_machines(json: &str) -> Result<Vec<SatellitePrinter>, String> {
     let root: Value = serde_json::from_str(json).map_err(|e| e.to_string())?;
-    let plats = root["plattree"].as_array().ok_or("no printers (plattree) in the file")?;
+    let plats = root["plattree"]
+        .as_array()
+        .ok_or("no printers (plattree) in the file")?;
     plats
         .iter()
         .map(|plat| {
@@ -65,8 +67,14 @@ pub fn parse_machines(json: &str) -> Result<Vec<SatellitePrinter>, String> {
                 .as_array()
                 .map(|list| list.iter().filter_map(resin).collect())
                 .unwrap_or_default();
-            let active_resin = printer["vd_active_printer"]["vd_resine_profilename"].as_str().map(str::to_owned);
-            Ok(SatellitePrinter { machine, resins, active_resin })
+            let active_resin = printer["vd_active_printer"]["vd_resine_profilename"]
+                .as_str()
+                .map(str::to_owned);
+            Ok(SatellitePrinter {
+                machine,
+                resins,
+                active_resin,
+            })
         })
         .collect()
 }
@@ -76,16 +84,25 @@ fn num(v: &Value, key: &str) -> f64 {
 }
 
 fn machine(m: &Value, size: &Value) -> Result<Machine, String> {
-    let name = m["vd_printer_machine_para_type"].as_str().ok_or("a printer has no name")?.to_owned();
-    let incline = m["vd_printer_machine_para_is_incline"].as_bool().unwrap_or(false);
+    let name = m["vd_printer_machine_para_type"]
+        .as_str()
+        .ok_or("a printer has no name")?
+        .to_owned();
+    let incline = m["vd_printer_machine_para_is_incline"]
+        .as_bool()
+        .unwrap_or(false);
     Ok(Machine {
         resolution_x: num(m, "vd_printer_machine_para_resx") as u16,
         resolution_y: num(m, "vd_printer_machine_para_resy") as u16,
         display_width_mm: num(size, "x") as f32,
         display_height_mm: num(size, "y") as f32,
         machine_z_mm: num(size, "z") as f32,
-        mirror_x: m["vd_printer_machine_para_mirror_x"].as_bool().unwrap_or(false),
-        mirror_y: m["vd_printer_machine_para_mirror_y"].as_bool().unwrap_or(false),
+        mirror_x: m["vd_printer_machine_para_mirror_x"]
+            .as_bool()
+            .unwrap_or(false),
+        mirror_y: m["vd_printer_machine_para_mirror_y"]
+            .as_bool()
+            .unwrap_or(false),
         // Measured on the Saturn 4 Ultra 16K, a tilting printer. Other printers will need
         // their own reference slices; until then tilting ones get the same and others none.
         tilt_seconds_per_layer: if incline { 2.5 } else { 0.0 },
@@ -102,7 +119,11 @@ fn resin(r: &Value) -> Option<Resin> {
     let k = |key: &str| num(p, &format!("vd_printer_printer_{key}"));
     let pwm = |key: &str| {
         let v = num(adv, key);
-        if v > 0.0 { v as u16 } else { 255 }
+        if v > 0.0 {
+            v as u16
+        } else {
+            255
+        }
     };
     let bottom_motion = Motion {
         lift_mm: k("para_bootom_lift_dis"),
@@ -189,7 +210,10 @@ mod tests {
         let printers = parse_machines(SAMPLE).unwrap();
         assert_eq!(printers.len(), 1);
         assert_eq!(printers[0].machine, Machine::saturn_4_ultra_16k());
-        assert_eq!(printers[0].active_resin.as_deref(), Some("SirayaTech - Fast (Navy Grey)"));
+        assert_eq!(
+            printers[0].active_resin.as_deref(),
+            Some("SirayaTech - Fast (Navy Grey)")
+        );
     }
 
     #[test]
@@ -198,11 +222,39 @@ mod tests {
         let (normal, navy) = (&printers[0].resins[0], &printers[0].resins[1]);
         // What SatelLite's Parameters tab shows for each.
         assert_eq!(normal.bottom.exposure_s, 32.0);
-        assert_eq!(normal.bottom.waits, Waits { before_cure_s: 1.2, before_release_s: 0.0, after_release_s: 0.0 });
+        assert_eq!(
+            normal.bottom.waits,
+            Waits {
+                before_cure_s: 1.2,
+                before_release_s: 0.0,
+                after_release_s: 0.0
+            }
+        );
         assert_eq!(normal.normal.exposure_s, 2.3);
-        assert_eq!(normal.normal.waits, Waits { before_cure_s: 1.2, before_release_s: 0.0, after_release_s: 0.0 });
-        assert_eq!(navy.bottom.waits, Waits { before_cure_s: 1.0, before_release_s: 1.5, after_release_s: 0.0 });
-        assert_eq!(navy.normal.waits, Waits { before_cure_s: 0.0, before_release_s: 0.0, after_release_s: 1.0 });
+        assert_eq!(
+            normal.normal.waits,
+            Waits {
+                before_cure_s: 1.2,
+                before_release_s: 0.0,
+                after_release_s: 0.0
+            }
+        );
+        assert_eq!(
+            navy.bottom.waits,
+            Waits {
+                before_cure_s: 1.0,
+                before_release_s: 1.5,
+                after_release_s: 0.0
+            }
+        );
+        assert_eq!(
+            navy.normal.waits,
+            Waits {
+                before_cure_s: 0.0,
+                before_release_s: 0.0,
+                after_release_s: 1.0
+            }
+        );
         assert_eq!(navy.normal.exposure_s, 1.9);
         assert_eq!(navy.density_g_ml, 1.15);
         // The hidden motion that makes the print-time estimate 9.1 s a layer slower.

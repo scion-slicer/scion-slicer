@@ -1,6 +1,6 @@
 [package]
 name = "scion-slicer-mcp"
-description = "MCP server for Scion Slicer: lets an AI agent run resin print checks on a mesh."
+description = "MCP server for Scion Slicer: lets an AI agent check resin prints and slice them into printer files."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -12,6 +12,7 @@ path = "src/main.rs"
 
 [dependencies]
 scion-slicer-core.workspace = true
+scion-slicer-goo.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 rmcp = { version = "3.10", features = ["server", "macros", "transport-io", "schemars"] }

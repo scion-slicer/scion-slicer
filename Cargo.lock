@@ -1278,6 +1278,9 @@ dependencies = [
 [[package]]
 name = "scion-slicer-goo"
 version = "0.1.2"
+dependencies = [
+ "serde_json",
+]
 
 [[package]]
 name = "scion-slicer-mcp"
@@ -1286,6 +1289,7 @@ dependencies = [
  "rmcp",
  "schemars",
  "scion-slicer-core",
+ "scion-slicer-goo",
  "serde",
  "serde_json",
  "tokio",

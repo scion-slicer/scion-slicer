@@ -106,12 +106,81 @@ pub struct Resin {
     pub currency: String,
 }
 
+impl Resin {
+    /// SatelLite's default resin profile for the Saturn 4 Ultra 16K, "Normal".
+    pub fn satellite_normal() -> Self {
+        let layer = |exposure_s| LayerSettings {
+            exposure_s,
+            waits: Waits {
+                before_cure_s: 1.2,
+                before_release_s: 0.0,
+                after_release_s: 0.0,
+            },
+            pwm: 255,
+            motion: Motion::default(),
+        };
+        Self {
+            profile_name: "Normal".into(),
+            layer_height_mm: 0.05,
+            bottom_layers: 5,
+            transition_layers: 10,
+            bottom: layer(32.0),
+            normal: layer(2.3),
+            density_g_ml: 1.15,
+            price_per_kg: 30.0,
+            currency: "$".into(),
+        }
+    }
+
+    /// SatelLite's SirayaTech Fast (Navy Grey) profile for the Saturn 4 Ultra 16K, with the
+    /// bottom Wait Before Release at 1.5 s, as used for the reference slices and test prints.
+    pub fn siraya_fast_navy_grey() -> Self {
+        let motion = Motion {
+            lift_mm: 5.0,
+            lift_speed_mm_min: 65.0,
+            retract_mm: 5.0,
+            retract_speed_mm_min: 150.0,
+        };
+        Self {
+            profile_name: "SirayaTech - Fast (Navy Grey)".into(),
+            layer_height_mm: 0.05,
+            bottom_layers: 5,
+            transition_layers: 10,
+            bottom: LayerSettings {
+                exposure_s: 30.0,
+                waits: Waits {
+                    before_cure_s: 1.0,
+                    before_release_s: 1.5,
+                    after_release_s: 0.0,
+                },
+                pwm: 255,
+                motion,
+            },
+            normal: LayerSettings {
+                exposure_s: 1.9,
+                waits: Waits {
+                    before_cure_s: 0.0,
+                    before_release_s: 0.0,
+                    after_release_s: 1.0,
+                },
+                pwm: 255,
+                motion,
+            },
+            density_g_ml: 1.15,
+            price_per_kg: 30.0,
+            currency: "$".into(),
+        }
+    }
+}
+
 /// Which kind a layer is, by its index from the plate (0-based).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LayerKind {
     Bottom,
     /// The `step`-th transition layer, counting from 1.
-    Transition { step: u32 },
+    Transition {
+        step: u32,
+    },
     Normal,
 }
 
@@ -121,7 +190,9 @@ impl Resin {
         if index < self.bottom_layers {
             LayerKind::Bottom
         } else if index < transition_end {
-            LayerKind::Transition { step: index - self.bottom_layers + 1 }
+            LayerKind::Transition {
+                step: index - self.bottom_layers + 1,
+            }
         } else {
             LayerKind::Normal
         }
@@ -168,7 +239,12 @@ mod tests {
     use super::*;
 
     fn resin(transition: u16) -> Resin {
-        let layer = |exposure_s| LayerSettings { exposure_s, waits: Waits::default(), pwm: 255, motion: Motion::default() };
+        let layer = |exposure_s| LayerSettings {
+            exposure_s,
+            waits: Waits::default(),
+            pwm: 255,
+            motion: Motion::default(),
+        };
         Resin {
             profile_name: "test".into(),
             layer_height_mm: 0.05,
@@ -186,7 +262,10 @@ mod tests {
     fn transition_steps_down_to_the_normal_exposure() {
         let r = resin(10);
         let ramp: Vec<f32> = (4..16).map(|i| r.exposure_s(i)).collect();
-        assert_eq!(ramp, [30.0, 27.19, 24.38, 21.57, 18.76, 15.95, 13.14, 10.33, 7.52, 4.71, 1.9, 1.9]);
+        assert_eq!(
+            ramp,
+            [30.0, 27.19, 24.38, 21.57, 18.76, 15.95, 13.14, 10.33, 7.52, 4.71, 1.9, 1.9]
+        );
         let r = resin(0);
         assert_eq!(r.exposure_s(5), 1.9);
     }

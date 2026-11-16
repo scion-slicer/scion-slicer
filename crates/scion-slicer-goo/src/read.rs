@@ -84,7 +84,10 @@ struct Reader<'a> {
 impl<'a> Reader<'a> {
     fn take(&mut self, n: usize) -> Result<&'a [u8], String> {
         let end = self.at + n;
-        let s = self.b.get(self.at..end).ok_or_else(|| format!("file ends at byte {}", self.b.len()))?;
+        let s = self
+            .b
+            .get(self.at..end)
+            .ok_or_else(|| format!("file ends at byte {}", self.b.len()))?;
         self.at = end;
         Ok(s)
     }
@@ -180,7 +183,10 @@ impl<'a> GooFile<'a> {
             transition_layers: r.u16()?,
         };
         if r.at != HEADER_SIZE {
-            return Err(format!("header ends at byte {}, expected {HEADER_SIZE}", r.at));
+            return Err(format!(
+                "header ends at byte {}, expected {HEADER_SIZE}",
+                r.at
+            ));
         }
         r.at = header.layer_content_offset as usize;
 
@@ -200,12 +206,30 @@ impl<'a> GooFile<'a> {
             let len = r.u32()? as usize;
             let data = r.take(len)?;
             r.crlf(&format!("layer {i}'s data"))?;
-            layers.push(Layer { record, pause, pause_position_z_mm, z_mm, exposure_s, light_off_s, waits_s, motion, pwm, data });
+            layers.push(Layer {
+                record,
+                pause,
+                pause_position_z_mm,
+                z_mm,
+                exposure_s,
+                light_off_s,
+                waits_s,
+                motion,
+                pwm,
+                data,
+            });
         }
         let footer = &bytes[r.at..];
         if footer != FOOTER {
-            return Err(format!("the file doesn't end with the .goo footer ({} bytes left)", footer.len()));
+            return Err(format!(
+                "the file doesn't end with the .goo footer ({} bytes left)",
+                footer.len()
+            ));
         }
-        Ok(Self { header, layers, footer })
+        Ok(Self {
+            header,
+            layers,
+            footer,
+        })
     }
 }

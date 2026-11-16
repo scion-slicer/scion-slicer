@@ -22,7 +22,10 @@ fn crop(pixels: &[u8], width: usize) -> Option<Crop> {
     let (mut x0, mut y0, mut x1, mut y1) = (usize::MAX, usize::MAX, 0, 0);
     for y in 0..height {
         let row = &pixels[y * width..(y + 1) * width];
-        if let (Some(a), Some(b)) = (row.iter().position(|&p| p != 0), row.iter().rposition(|&p| p != 0)) {
+        if let (Some(a), Some(b)) = (
+            row.iter().position(|&p| p != 0),
+            row.iter().rposition(|&p| p != 0),
+        ) {
             (x0, x1, y0, y1) = (x0.min(a), x1.max(b), y0.min(y), y);
         }
     }
@@ -32,9 +35,18 @@ fn crop(pixels: &[u8], width: usize) -> Option<Crop> {
     let (w, h) = (x1 - x0 + 1, y1 - y0 + 1);
     let mut px = Vec::with_capacity(w * h);
     for y in y0..=y1 {
-        px.extend(pixels[y * width + x0..y * width + x1 + 1].iter().map(|&p| p != 0));
+        px.extend(
+            pixels[y * width + x0..y * width + x1 + 1]
+                .iter()
+                .map(|&p| p != 0),
+        );
     }
-    Some(Crop { w, h, px, at: (x0, y0) })
+    Some(Crop {
+        w,
+        h,
+        px,
+        at: (x0, y0),
+    })
 }
 
 fn differ(a: &Crop, b: &Crop, flip_x: bool, flip_y: bool) -> Option<usize> {
@@ -44,7 +56,10 @@ fn differ(a: &Crop, b: &Crop, flip_x: bool, flip_y: bool) -> Option<usize> {
     let mut n = 0;
     for y in 0..a.h {
         for x in 0..a.w {
-            let (bx, by) = (if flip_x { a.w - 1 - x } else { x }, if flip_y { a.h - 1 - y } else { y });
+            let (bx, by) = (
+                if flip_x { a.w - 1 - x } else { x },
+                if flip_y { a.h - 1 - y } else { y },
+            );
             n += (a.px[y * a.w + x] != b.px[by * b.w + bx]) as usize;
         }
     }
@@ -56,9 +71,15 @@ fn main() -> Result<(), String> {
     let [a, b] = &args[..] else {
         return Err("usage: compare a.goo b.goo".into());
     };
-    let (ab, bb) = (std::fs::read(a).map_err(|e| e.to_string())?, std::fs::read(b).map_err(|e| e.to_string())?);
+    let (ab, bb) = (
+        std::fs::read(a).map_err(|e| e.to_string())?,
+        std::fs::read(b).map_err(|e| e.to_string())?,
+    );
     let (fa, fb) = (GooFile::parse(&ab)?, GooFile::parse(&bb)?);
-    let (w, n) = (fa.header.resolution_x as usize, fa.header.resolution_x as usize * fa.header.resolution_y as usize);
+    let (w, n) = (
+        fa.header.resolution_x as usize,
+        fa.header.resolution_x as usize * fa.header.resolution_y as usize,
+    );
     println!("layers: {} vs {}", fa.layers.len(), fb.layers.len());
     let count = fa.layers.len().min(fb.layers.len());
     let mut picks: Vec<usize> = vec![0, 4, 5, 14, 15, count / 2, count - 1];

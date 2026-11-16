@@ -5,10 +5,12 @@
 //! the engine are carried as patches in `patches/dragonfruit/`.
 //!
 //! - [`checks`]: print checks (resin traps, suction cups, peel alerts, ledges).
+//! - [`profiles`]: the printers and resin profiles to slice with.
 //! - [`slice`]: slicing a mesh into a printer file.
 //! - [`stl`]: loading meshes.
 
 pub mod checks;
+pub mod profiles;
 pub mod slice;
 pub mod stl;
 

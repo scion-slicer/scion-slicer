@@ -11,7 +11,9 @@ use std::io::Cursor;
 use std::path::PathBuf;
 
 use scion_slicer_goo::rle::decode_layer;
-use scion_slicer_goo::{FileInfo, GooFile, GooWriter, LayerSettings, Machine, Motion, Resin, Waits};
+use scion_slicer_goo::{
+    FileInfo, GooFile, GooWriter, LayerSettings, Machine, Motion, Resin, Waits,
+};
 
 fn corpus() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../corpus/satellite/saturn-4-ultra-16k")
@@ -26,13 +28,21 @@ fn typed_in() -> Resin {
         transition_layers: 10,
         bottom: LayerSettings {
             exposure_s: 30.0,
-            waits: Waits { before_cure_s: 1.0, before_release_s: 1.5, after_release_s: 0.0 },
+            waits: Waits {
+                before_cure_s: 1.0,
+                before_release_s: 1.5,
+                after_release_s: 0.0,
+            },
             pwm: 255,
             motion: Motion::default(),
         },
         normal: LayerSettings {
             exposure_s: 1.9,
-            waits: Waits { before_cure_s: 0.0, before_release_s: 0.0, after_release_s: 1.0 },
+            waits: Waits {
+                before_cure_s: 0.0,
+                before_release_s: 0.0,
+                after_release_s: 1.0,
+            },
             pwm: 255,
             motion: Motion::default(),
         },
@@ -45,7 +55,12 @@ fn typed_in() -> Resin {
 /// The SirayaTech Fast (Navy Grey) profile itself, with the lift and retract it keeps
 /// out of sight: 5 mm at 65 mm/min up, 5 mm at 150 mm/min back.
 fn siraya() -> Resin {
-    let motion = Motion { lift_mm: 5.0, lift_speed_mm_min: 65.0, retract_mm: 5.0, retract_speed_mm_min: 150.0 };
+    let motion = Motion {
+        lift_mm: 5.0,
+        lift_speed_mm_min: 65.0,
+        retract_mm: 5.0,
+        retract_speed_mm_min: 150.0,
+    };
     let mut r = typed_in();
     r.profile_name = "SirayaTech - Fast (Navy Grey)".into();
     r.bottom.motion = motion;
@@ -63,15 +78,35 @@ fn cases() -> Vec<(&'static str, Resin, f64)> {
         ("00-small-baseline", typed_in(), 800.0),
         ("02-tall", typed_in(), 4000.0),
         ("03-wide", typed_in(), 27000.0),
-        ("04-small-transition-5", with(|r| r.transition_layers = 5), 800.0),
-        ("05-small-transition-0", with(|r| r.transition_layers = 0), 800.0),
+        (
+            "04-small-transition-5",
+            with(|r| r.transition_layers = 5),
+            800.0,
+        ),
+        (
+            "05-small-transition-0",
+            with(|r| r.transition_layers = 0),
+            800.0,
+        ),
         ("06-small-bottom-3", with(|r| r.bottom_layers = 3), 800.0),
-        ("07-small-bottom-exposure-20", with(|r| r.bottom.exposure_s = 20.0), 800.0),
+        (
+            "07-small-bottom-exposure-20",
+            with(|r| r.bottom.exposure_s = 20.0),
+            800.0,
+        ),
         (
             "08-small-waits",
             with(|r| {
-                r.bottom.waits = Waits { before_cure_s: 2.0, before_release_s: 3.0, after_release_s: 4.0 };
-                r.normal.waits = Waits { before_cure_s: 0.5, before_release_s: 0.6, after_release_s: 0.7 };
+                r.bottom.waits = Waits {
+                    before_cure_s: 2.0,
+                    before_release_s: 3.0,
+                    after_release_s: 4.0,
+                };
+                r.normal.waits = Waits {
+                    before_cure_s: 0.5,
+                    before_release_s: 0.6,
+                    after_release_s: 0.7,
+                };
             }),
             800.0,
         ),
@@ -98,20 +133,30 @@ fn rewrites_satellite_files_identically() {
             created: theirs.header.created.clone(),
         };
 
-        let mut writer = GooWriter::new(Cursor::new(Vec::new()), machine.clone(), resin, info).unwrap();
+        let mut writer =
+            GooWriter::new(Cursor::new(Vec::new()), machine.clone(), resin, info).unwrap();
         for layer in &theirs.layers {
-            writer.add_layer(&decode_layer(layer.data, machine.pixel_count()).unwrap()).unwrap();
+            writer
+                .add_layer(&decode_layer(layer.data, machine.pixel_count()).unwrap())
+                .unwrap();
         }
         let (out, summary) = writer.finish(Some(volume)).unwrap();
         let rewritten = out.into_inner();
         let ours = GooFile::parse(&rewritten).unwrap();
 
         if ours.header != theirs.header {
-            failures.push(format!("{name}: header differs\n  ours:   {:?}\n  theirs: {:?}", ours.header, theirs.header));
+            failures.push(format!(
+                "{name}: header differs\n  ours:   {:?}\n  theirs: {:?}",
+                ours.header, theirs.header
+            ));
         }
         for (i, (a, b)) in ours.layers.iter().zip(&theirs.layers).enumerate() {
             if a.record != b.record {
-                failures.push(format!("{name}: layer {i} record differs\n  ours:   {a:?}\n  theirs: {b:?}", a = Rec(a), b = Rec(b)));
+                failures.push(format!(
+                    "{name}: layer {i} record differs\n  ours:   {a:?}\n  theirs: {b:?}",
+                    a = Rec(a),
+                    b = Rec(b)
+                ));
                 break;
             }
             if a.data != b.data {
@@ -122,7 +167,10 @@ fn rewrites_satellite_files_identically() {
         if ours.footer != theirs.footer {
             failures.push(format!("{name}: footer differs"));
         }
-        eprintln!("{name}: {} layers, {} s, {} g", summary.layers, summary.print_time_s, summary.weight_g);
+        eprintln!(
+            "{name}: {} layers, {} s, {} g",
+            summary.layers, summary.print_time_s, summary.weight_g
+        );
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
@@ -136,13 +184,25 @@ fn volume_falls_back_to_counting_pixels() {
     let machine = Machine::saturn_4_ultra_16k();
     let original = std::fs::read(path).unwrap();
     let theirs = GooFile::parse(&original).unwrap();
-    let mut writer = GooWriter::new(Cursor::new(Vec::new()), machine.clone(), typed_in(), FileInfo::scion_slicer()).unwrap();
+    let mut writer = GooWriter::new(
+        Cursor::new(Vec::new()),
+        machine.clone(),
+        typed_in(),
+        FileInfo::scion_slicer(),
+    )
+    .unwrap();
     for layer in &theirs.layers {
-        writer.add_layer(&decode_layer(layer.data, machine.pixel_count()).unwrap()).unwrap();
+        writer
+            .add_layer(&decode_layer(layer.data, machine.pixel_count()).unwrap())
+            .unwrap();
     }
     let (_, summary) = writer.finish(None).unwrap();
     // 20 x 20 x 2 mm: the pixels give 800 mm³ within a pixel's width around the edge.
-    assert!((summary.volume_mm3 - 800.0).abs() < 8.0, "volume {}", summary.volume_mm3);
+    assert!(
+        (summary.volume_mm3 - 800.0).abs() < 8.0,
+        "volume {}",
+        summary.volume_mm3
+    );
 }
 
 /// Prints a layer record's fields instead of its bytes.
@@ -154,7 +214,14 @@ impl std::fmt::Debug for Rec<'_, '_> {
         write!(
             f,
             "pause {} pauseZ {} z {} exposure {} off {} waits {:?} motion {:?} pwm {}",
-            l.pause, l.pause_position_z_mm, l.z_mm, l.exposure_s, l.light_off_s, l.waits_s, l.motion, l.pwm
+            l.pause,
+            l.pause_position_z_mm,
+            l.z_mm,
+            l.exposure_s,
+            l.light_off_s,
+            l.waits_s,
+            l.motion,
+            l.pwm
         )
     }
 }
@@ -168,11 +235,18 @@ fn satellite_profile_matches_the_reference_settings() {
         return;
     };
     let printers = scion_slicer_goo::satellite::load_machines(&path).unwrap();
-    let Some(printer) = printers.iter().find(|p| p.machine == Machine::saturn_4_ultra_16k()) else {
+    let Some(printer) = printers
+        .iter()
+        .find(|p| p.machine == Machine::saturn_4_ultra_16k())
+    else {
         eprintln!("skipping: no Saturn 4 Ultra 16K in SatelLite");
         return;
     };
-    let Some(navy) = printer.resins.iter().find(|r| r.profile_name == "SirayaTech - Fast (Navy Grey)") else {
+    let Some(navy) = printer
+        .resins
+        .iter()
+        .find(|r| r.profile_name == "SirayaTech - Fast (Navy Grey)")
+    else {
         eprintln!("skipping: no SirayaTech Fast (Navy Grey) profile");
         return;
     };

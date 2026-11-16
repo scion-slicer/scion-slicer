@@ -13,32 +13,7 @@
 use std::path::Path;
 
 use scion_slicer_core::slice::{slice_stl_to_goo, BottomCompensation, Placement, SliceOptions};
-use scion_slicer_goo::{LayerSettings, Machine, Motion, Resin, Waits};
-
-fn siraya_fast_navy_grey() -> Resin {
-    let motion = Motion { lift_mm: 5.0, lift_speed_mm_min: 65.0, retract_mm: 5.0, retract_speed_mm_min: 150.0 };
-    Resin {
-        profile_name: "SirayaTech - Fast (Navy Grey)".into(),
-        layer_height_mm: 0.05,
-        bottom_layers: 5,
-        transition_layers: 10,
-        bottom: LayerSettings {
-            exposure_s: 30.0,
-            waits: Waits { before_cure_s: 1.0, before_release_s: 1.5, after_release_s: 0.0 },
-            pwm: 255,
-            motion,
-        },
-        normal: LayerSettings {
-            exposure_s: 1.9,
-            waits: Waits { before_cure_s: 0.0, before_release_s: 0.0, after_release_s: 1.0 },
-            pwm: 255,
-            motion,
-        },
-        density_g_ml: 1.15,
-        price_per_kg: 30.0,
-        currency: "$".into(),
-    }
-}
+use scion_slicer_goo::{Machine, Resin};
 
 fn main() -> Result<(), String> {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -47,15 +22,24 @@ fn main() -> Result<(), String> {
         return Err(usage.into());
     };
     let mut options = SliceOptions::default();
-    let mut comp = BottomCompensation { outline_mm: 0.0, hole_mm: 0.0, fade: true };
+    let mut comp = BottomCompensation {
+        outline_mm: 0.0,
+        hole_mm: 0.0,
+        fade: true,
+    };
     let mut rest = args[2..].iter();
     let num = |v: Option<&String>, what: &str| -> Result<f64, String> {
-        v.ok_or(format!("{what} needs a value"))?.parse::<f64>().map_err(|e| format!("{what}: {e}"))
+        v.ok_or(format!("{what} needs a value"))?
+            .parse::<f64>()
+            .map_err(|e| format!("{what}: {e}"))
     };
     while let Some(flag) = rest.next() {
         match flag.as_str() {
             "--at" => {
-                options.placement = Placement::Corner { x_mm: num(rest.next(), "--at")?, y_mm: num(rest.next(), "--at")? }
+                options.placement = Placement::Corner {
+                    x_mm: num(rest.next(), "--at")?,
+                    y_mm: num(rest.next(), "--at")?,
+                }
             }
             "--rotate" => options.rotate_z_deg = num(rest.next(), "--rotate")?,
             "--outline" => comp.outline_mm = num(rest.next(), "--outline")? as f32,
@@ -68,7 +52,13 @@ fn main() -> Result<(), String> {
         options.bottom_compensation = Some(comp);
     }
     let start = std::time::Instant::now();
-    let s = slice_stl_to_goo(Path::new(stl), Path::new(goo), &Machine::saturn_4_ultra_16k(), &siraya_fast_navy_grey(), &options)?;
+    let s = slice_stl_to_goo(
+        Path::new(stl),
+        Path::new(goo),
+        &Machine::saturn_4_ultra_16k(),
+        &Resin::siraya_fast_navy_grey(),
+        &options,
+    )?;
     println!(
         "{goo}: {} layers, print time {} s, {:.3} ml, {} g, sliced in {:.1} s",
         s.layers,

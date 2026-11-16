@@ -12,7 +12,9 @@ pub const PARAMS_OFFSET: usize = 195_310;
 /// The version SatelLite 1.0.2.43 writes and opens.
 pub const VERSION: &[u8; 4] = b"V3.0";
 pub const MAGIC: [u8; 8] = [0x07, 0x00, 0x00, 0x00, 0x44, 0x4C, 0x50, 0x00];
-pub const FOOTER: [u8; 11] = [0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x44, 0x4C, 0x50, 0x00];
+pub const FOOTER: [u8; 11] = [
+    0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x44, 0x4C, 0x50, 0x00,
+];
 pub const SMALL_PREVIEW: usize = 116;
 pub const BIG_PREVIEW: usize = 290;
 const CRLF: [u8; 2] = [0x0D, 0x0A];
@@ -94,7 +96,16 @@ impl<W: Write + Seek> GooWriter<W> {
     pub fn new(mut out: W, machine: Machine, resin: Resin, info: FileInfo) -> io::Result<Self> {
         out.write_all(&vec![0u8; HEADER_SIZE])?;
         let footprint = Footprint::empty();
-        Ok(Self { out, machine, resin, info, layers: 0, time_s: 0.0, lit_pixels: 0.0, footprint })
+        Ok(Self {
+            out,
+            machine,
+            resin,
+            info,
+            layers: 0,
+            time_s: 0.0,
+            lit_pixels: 0.0,
+            footprint,
+        })
     }
 
     /// Add the next layer, counting from the plate.
@@ -106,8 +117,10 @@ impl<W: Write + Seek> GooWriter<W> {
     /// Add the next layer, encoded with [`prepare_layer`].
     pub fn add_prepared(&mut self, layer: &PreparedLayer) -> io::Result<()> {
         let index = self.layers;
-        self.out.write_all(&layer_record(&self.machine, &self.resin, index))?;
-        self.out.write_all(&(layer.data.len() as u32).to_be_bytes())?;
+        self.out
+            .write_all(&layer_record(&self.machine, &self.resin, index))?;
+        self.out
+            .write_all(&(layer.data.len() as u32).to_be_bytes())?;
         self.out.write_all(&layer.data)?;
         self.out.write_all(&CRLF)?;
 
@@ -145,7 +158,13 @@ impl<W: Write + Seek> GooWriter<W> {
             weight_g: weight,
             cost: cost as f32,
         };
-        let header = header(&self.machine, &self.resin, &self.info, &summary, &self.footprint);
+        let header = header(
+            &self.machine,
+            &self.resin,
+            &self.info,
+            &summary,
+            &self.footprint,
+        );
         self.out.seek(SeekFrom::Start(0))?;
         self.out.write_all(&header)?;
         self.out.seek(SeekFrom::End(0))?;
@@ -154,7 +173,13 @@ impl<W: Write + Seek> GooWriter<W> {
     }
 }
 
-fn header(machine: &Machine, resin: &Resin, info: &FileInfo, s: &Summary, footprint: &Footprint) -> Vec<u8> {
+fn header(
+    machine: &Machine,
+    resin: &Resin,
+    info: &FileInfo,
+    s: &Summary,
+    footprint: &Footprint,
+) -> Vec<u8> {
     let mut h = Bytes(Vec::with_capacity(HEADER_SIZE));
     h.raw(VERSION);
     h.raw(&MAGIC);
@@ -319,7 +344,11 @@ impl Footprint {
                     if machine.mirror_y {
                         fy = FOOT_H - 1 - fy;
                     }
-                    if self.0[fy * FOOT_W + fx] { PRINT } else { SCREEN }
+                    if self.0[fy * FOOT_W + fx] {
+                        PRINT
+                    } else {
+                        SCREEN
+                    }
                 };
                 out.extend_from_slice(&color.to_be_bytes());
             }
@@ -353,7 +382,12 @@ fn format_utc(secs: i64) -> String {
     let day = doy - (153 * mp + 2) / 5 + 1;
     let month = if mp < 10 { mp + 3 } else { mp - 9 };
     let year = yoe + era * 400 + (month <= 2) as i64;
-    format!("{year:04}-{month:02}-{day:02} {:02}:{:02}:{:02}", rem / 3600, rem / 60 % 60, rem % 60)
+    format!(
+        "{year:04}-{month:02}-{day:02} {:02}:{:02}:{:02}",
+        rem / 3600,
+        rem / 60 % 60,
+        rem % 60
+    )
 }
 
 #[cfg(test)]
@@ -372,6 +406,6 @@ mod tests {
         let mut b = Bytes(Vec::new());
         b.text("$", 8);
         b.text("0123456789", 4);
-        assert_eq!(b.0, b"$\0\0\0\0\0\0\0012\0");
+        assert_eq!(b.0, [b"$\0\0\0\0\0\0\0".as_slice(), b"012\0"].concat());
     }
 }

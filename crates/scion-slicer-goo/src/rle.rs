@@ -27,7 +27,10 @@ pub fn encode_layer(pixels: &[u8]) -> Vec<u8> {
     let mut i = 0;
     while i < pixels.len() {
         let value = pixels[i];
-        let run = pixels[i..].iter().position(|&p| p != value).unwrap_or(pixels.len() - i);
+        let run = pixels[i..]
+            .iter()
+            .position(|&p| p != value)
+            .unwrap_or(pixels.len() - i);
         let mut left = run;
         while left > 0 {
             let len = left.min(MAX_RUN as usize);
@@ -83,7 +86,12 @@ pub fn decode_layer(data: &[u8], pixel_count: usize) -> Result<Vec<u8>, String> 
     let mut pixels = Vec::with_capacity(pixel_count);
     let mut value: u8 = 0;
     let mut i = 0;
-    let byte = |i: usize| chunks.get(i).copied().ok_or("layer data ends inside a chunk");
+    let byte = |i: usize| {
+        chunks
+            .get(i)
+            .copied()
+            .ok_or("layer data ends inside a chunk")
+    };
     while i < chunks.len() {
         let head = chunks[i];
         let extra = (head >> 4) & 0b11;
@@ -92,7 +100,11 @@ pub fn decode_layer(data: &[u8], pixel_count: usize) -> Result<Vec<u8>, String> 
             // A difference from the previous pixel: bit 5 is the sign, bit 4 says whether
             // a length byte follows (otherwise the run is one pixel).
             let diff = head & 0xF;
-            value = if extra & 0b10 != 0 { value.wrapping_sub(diff) } else { value.wrapping_add(diff) };
+            value = if extra & 0b10 != 0 {
+                value.wrapping_sub(diff)
+            } else {
+                value.wrapping_add(diff)
+            };
             if extra & 0b01 != 0 {
                 i += 1;
                 byte(i - 1)? as usize
@@ -121,7 +133,10 @@ pub fn decode_layer(data: &[u8], pixel_count: usize) -> Result<Vec<u8>, String> 
         pixels.resize(pixels.len() + len, value);
     }
     if pixels.len() != pixel_count {
-        return Err(format!("layer data holds {} pixels, expected {pixel_count}", pixels.len()));
+        return Err(format!(
+            "layer data holds {} pixels, expected {pixel_count}",
+            pixels.len()
+        ));
     }
     Ok(pixels)
 }
@@ -147,7 +162,14 @@ mod tests {
 
     #[test]
     fn runs_use_the_shortest_length_field() {
-        for (len, bytes) in [(15u32, 1usize), (16, 2), (0xFFF, 2), (0x1000, 3), (0xF_FFFF, 3), (0x10_0000, 4)] {
+        for (len, bytes) in [
+            (15u32, 1usize),
+            (16, 2),
+            (0xFFF, 2),
+            (0x1000, 3),
+            (0xF_FFFF, 3),
+            (0x10_0000, 4),
+        ] {
             let mut out = Vec::new();
             push_run(&mut out, 0xFF, len);
             assert_eq!(out.len(), bytes, "run of {len}");
@@ -172,7 +194,10 @@ mod tests {
         let mut data = vec![LAYER_MAGIC];
         data.extend_from_slice(&chunks);
         data.push(checksum(&chunks));
-        assert_eq!(decode_layer(&data, 6).unwrap(), [0x10, 0x12, 0x13, 0x13, 0x13, 0x10]);
+        assert_eq!(
+            decode_layer(&data, 6).unwrap(),
+            [0x10, 0x12, 0x13, 0x13, 0x13, 0x10]
+        );
     }
 
     #[test]

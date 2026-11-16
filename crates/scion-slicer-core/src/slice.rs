@@ -11,6 +11,9 @@ use dragonfruit_slicing_engine::types::SliceJobV3;
 use rayon::prelude::*;
 use scion_slicer_goo::{prepare_layer, FileInfo, GooWriter, Machine, Resin, Summary};
 
+use serde::Serialize;
+
+use crate::profiles::{Catalog, Source};
 use crate::stl::{self, Mesh};
 
 /// Where the part goes on the build plate.
@@ -35,13 +38,17 @@ pub struct SliceOptions {
 
 impl Default for SliceOptions {
     fn default() -> Self {
-        Self { placement: Placement::Centered, rotate_z_deg: 0.0, bottom_compensation: None }
+        Self {
+            placement: Placement::Centered,
+            rotate_z_deg: 0.0,
+            bottom_compensation: None,
+        }
     }
 }
 
 /// Elephant's-foot compensation on the layers against the plate, in mm: negative shrinks
 /// outlines and opens holes.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct BottomCompensation {
     pub outline_mm: f32,
     pub hole_mm: f32,
@@ -63,8 +70,15 @@ pub fn slice_stl_to_goo(
     options: &SliceOptions,
 ) -> Result<Summary, String> {
     let mesh = stl::load(stl_path)?;
-    let file = std::fs::File::create(out_path).map_err(|e| format!("{}: {e}", out_path.display()))?;
-    let (_, summary) = slice_to_goo(&mesh, std::io::BufWriter::new(file), machine, resin, options)?;
+    let file =
+        std::fs::File::create(out_path).map_err(|e| format!("{}: {e}", out_path.display()))?;
+    let (_, summary) = slice_to_goo(
+        &mesh,
+        std::io::BufWriter::new(file),
+        machine,
+        resin,
+        options,
+    )?;
     Ok(summary)
 }
 
@@ -97,12 +111,19 @@ pub fn slice_to_goo<W: Write + Seek>(
         }
     }
     let size = [hi[0] - lo[0], hi[1] - lo[1]];
-    let screen = [machine.resolution_x as f64 * pitch[0], machine.resolution_y as f64 * pitch[1]];
+    let screen = [
+        machine.resolution_x as f64 * pitch[0],
+        machine.resolution_y as f64 * pitch[1],
+    ];
     let corner = match options.placement {
         Placement::Centered => [(screen[0] - size[0]) / 2.0, (screen[1] - size[1]) / 2.0],
         Placement::Corner { x_mm, y_mm } => [x_mm, y_mm],
     };
-    if corner[0] < 0.0 || corner[1] < 0.0 || corner[0] + size[0] > screen[0] || corner[1] + size[1] > screen[1] {
+    if corner[0] < 0.0
+        || corner[1] < 0.0
+        || corner[0] + size[0] > screen[0]
+        || corner[1] + size[1] > screen[1]
+    {
         return Err(format!(
             "the part ({:.2} x {:.2} mm) doesn't fit on the {}'s screen ({:.2} x {:.2} mm) there",
             size[0], size[1], machine.name, screen[0], screen[1]
@@ -116,15 +137,28 @@ pub fn slice_to_goo<W: Write + Seek>(
         corner[1] - lo[1] - job.build_depth_mm as f64 / 2.0,
         -lo[2],
     ];
-    let flat: Vec<f32> = vertices.iter().flat_map(|v| (0..3).map(move |i| (v[i] + shift[i]) as f32)).collect();
+    let flat: Vec<f32> = vertices
+        .iter()
+        .flat_map(|v| (0..3).map(move |i| (v[i] + shift[i]) as f32))
+        .collect();
     let mut projected = parse_triangles(&flat);
     project_triangles_inplace(&mut projected, &job);
     let height = hi[2] - lo[2];
     let total_layers = (height / resin.layer_height_mm as f64).ceil().max(0.0) as u32;
-    let index = build_layer_index(&projected, total_layers, job.layer_height_mm, LayerSamplingSpan::CenterOnly);
+    let index = build_layer_index(
+        &projected,
+        total_layers,
+        job.layer_height_mm,
+        LayerSamplingSpan::CenterOnly,
+    );
 
-    let mut writer = GooWriter::new(out, machine.clone(), resin.clone(), FileInfo::scion_slicer())
-        .map_err(|e| e.to_string())?;
+    let mut writer = GooWriter::new(
+        out,
+        machine.clone(),
+        resin.clone(),
+        FileInfo::scion_slicer(),
+    )
+    .map_err(|e| e.to_string())?;
     let layers: Vec<u32> = (0..total_layers).collect();
     for batch in layers.chunks(LAYERS_PER_BATCH) {
         let prepared = batch
@@ -138,7 +172,9 @@ pub fn slice_to_goo<W: Write + Seek>(
             writer.add_prepared(layer).map_err(|e| e.to_string())?;
         }
     }
-    writer.finish(Some(mesh_volume_mm3(&mesh.triangles))).map_err(|e| e.to_string())
+    writer
+        .finish(Some(mesh_volume_mm3(&mesh.triangles)))
+        .map_err(|e| e.to_string())
 }
 
 /// The screen's pixel size in mm, across and down.
@@ -152,11 +188,19 @@ fn pixel_pitch(machine: &Machine) -> [f64; 2] {
 /// A job that draws the whole screen at the printer's resolution, black and white, with
 /// pixel edges every `pitch` mm from the screen's corner (the engine spreads its build
 /// size over n - 1 pixels, so the build is one pixel short of the screen).
-fn screen_job(machine: &Machine, resin: &Resin, compensation: Option<BottomCompensation>) -> SliceJobV3 {
+fn screen_job(
+    machine: &Machine,
+    resin: &Resin,
+    compensation: Option<BottomCompensation>,
+) -> SliceJobV3 {
     let pitch = pixel_pitch(machine);
     let (w, h) = (machine.resolution_x as u32, machine.resolution_y as u32);
     let (bottom, transition) = (resin.bottom_layers, resin.transition_layers as u32);
-    let c = compensation.unwrap_or(BottomCompensation { outline_mm: 0.0, hole_mm: 0.0, fade: true });
+    let c = compensation.unwrap_or(BottomCompensation {
+        outline_mm: 0.0,
+        hole_mm: 0.0,
+        fade: true,
+    });
     SliceJobV3 {
         bottom_outline_compensation_mm: c.outline_mm,
         bottom_hole_compensation_mm: c.hole_mm,
@@ -188,4 +232,93 @@ pub fn mesh_volume_mm3(triangles: &[Triangle]) -> f64 {
         ax * (by * cz - bz * cy) - ay * (bx * cz - bz * cx) + az * (bx * cy - by * cx)
     });
     (v.sum::<f64>() / 6.0).abs()
+}
+
+/// What to slice and how, by name: what an agent asks for.
+#[derive(Debug, Clone, Default)]
+pub struct SliceRequest {
+    pub stl_path: std::path::PathBuf,
+    /// Default: the STL's path with a `.goo` extension.
+    pub output_path: Option<std::path::PathBuf>,
+    /// Printer name or part of it. Default: the first printer.
+    pub printer: Option<String>,
+    /// Resin profile name or part of it. Default: the profile SatelLite last used.
+    pub resin: Option<String>,
+    pub options: SliceOptions,
+    /// Replace an existing output file.
+    pub overwrite: bool,
+}
+
+/// What came out of a slice.
+#[derive(Debug, Clone, Serialize)]
+pub struct SliceReport {
+    pub output_path: String,
+    pub printer: String,
+    pub resin: String,
+    pub profile_source: Source,
+    pub layers: u32,
+    pub layer_height_mm: f32,
+    pub print_time_s: u32,
+    pub print_time: String,
+    pub volume_ml: f64,
+    pub weight_g: f32,
+    pub cost: f32,
+    pub rotate_z_deg: f64,
+    pub bottom_compensation: Option<BottomCompensation>,
+    pub elapsed_ms: f64,
+    pub notes: Vec<String>,
+}
+
+/// Slice an STL with a printer and resin profile from `catalog`.
+pub fn slice_stl(request: &SliceRequest, catalog: &Catalog) -> Result<SliceReport, String> {
+    let start = std::time::Instant::now();
+    let printer = catalog.printer(request.printer.as_deref())?;
+    let resin = catalog.resin(printer, request.resin.as_deref())?;
+    let out = request
+        .output_path
+        .clone()
+        .unwrap_or_else(|| request.stl_path.with_extension("goo"));
+    if out.exists() && !request.overwrite {
+        return Err(format!(
+            "{} already exists; pass overwrite to replace it",
+            out.display()
+        ));
+    }
+    let summary = slice_stl_to_goo(
+        &request.stl_path,
+        &out,
+        &printer.machine,
+        resin,
+        &request.options,
+    )?;
+
+    let mut notes = vec![
+        "Scion Slicer's .goo writer reproduces ELEGOO SatelLite's files exactly in its tests, but its \
+         files are new: watch the first prints."
+            .to_string(),
+    ];
+    if catalog.source == Source::BuiltIn {
+        notes.push("ELEGOO SatelLite's profiles weren't found on this computer, so a built-in profile was used.".into());
+    }
+    if let Some(problem) = &catalog.problem {
+        notes.push(format!("SatelLite's profiles couldn't be read: {problem}"));
+    }
+    let t = summary.print_time_s;
+    Ok(SliceReport {
+        output_path: out.display().to_string(),
+        printer: printer.machine.name.clone(),
+        resin: resin.profile_name.clone(),
+        profile_source: catalog.source.clone(),
+        layers: summary.layers,
+        layer_height_mm: resin.layer_height_mm,
+        print_time_s: t,
+        print_time: format!("{}:{:02}:{:02}", t / 3600, t / 60 % 60, t % 60),
+        volume_ml: summary.volume_mm3 as f64 / 1000.0,
+        weight_g: summary.weight_g,
+        cost: summary.cost,
+        rotate_z_deg: request.options.rotate_z_deg,
+        bottom_compensation: request.options.bottom_compensation,
+        elapsed_ms: start.elapsed().as_secs_f64() * 1000.0,
+        notes,
+    })
 }

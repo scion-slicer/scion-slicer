@@ -15,10 +15,22 @@ fn main() -> Result<(), String> {
         let m = &printer.machine;
         println!(
             "{}: {} x {} px, {} x {} x {} mm, mirror x {} y {}, tilt {} s a layer",
-            m.name, m.resolution_x, m.resolution_y, m.display_width_mm, m.display_height_mm, m.machine_z_mm, m.mirror_x, m.mirror_y, m.tilt_seconds_per_layer
+            m.name,
+            m.resolution_x,
+            m.resolution_y,
+            m.display_width_mm,
+            m.display_height_mm,
+            m.machine_z_mm,
+            m.mirror_x,
+            m.mirror_y,
+            m.tilt_seconds_per_layer
         );
         for r in &printer.resins {
-            let active = if printer.active_resin.as_deref() == Some(&r.profile_name) { " (active)" } else { "" };
+            let active = if printer.active_resin.as_deref() == Some(&r.profile_name) {
+                " (active)"
+            } else {
+                ""
+            };
             println!(
                 "  {}{active}: {} mm, {} bottom + {} transition, {} s / {} s, waits {:?} / {:?}, lift+retract {:.2} s, {} g/ml, {} /kg",
                 r.profile_name,
