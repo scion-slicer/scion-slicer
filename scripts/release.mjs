@@ -23,7 +23,7 @@ const VERSION_RE = /^\d+\.\d+\.\d+$/;
 const PLUGIN = 'plugin/scion-slicer';
 const MANIFESTS = [`${PLUGIN}/plugin.json`, `${PLUGIN}/.claude-plugin/plugin.json`];
 const MCP_FILES = [`${PLUGIN}/mcp.json`, `${PLUGIN}/.mcp.json`];
-const CRATES = ['scion-slicer-core', 'scion-slicer-mcp'];
+const CRATES = ['scion-slicer-core', 'scion-slicer-goo', 'scion-slicer-mcp'];
 const SERVER_PACKAGE = '@scion-slicer/mcp';
 const PLUGIN_VERSION_ENV = 'SCION_SLICER_PLUGIN_VERSION';
 

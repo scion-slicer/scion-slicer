@@ -13,6 +13,7 @@
 // - check_print finds the resin trap;
 // - the update note appears on the first tool result only, with the right command;
 // - about reports the update;
+// - list_printers, list_resins and slice work, and slice writes a V3.0 .goo file;
 // - the launcher asks the registry once a day, not once per session;
 // - run from the plugin (SCION_SLICER_PLUGIN_VERSION set), the note is about the plugin;
 // - SCION_SLICER_NO_UPDATE_CHECK=1 turns all of it off.
@@ -177,7 +178,9 @@ async function main() {
     check(init.serverInfo.name === 'scion-slicer', `server calls itself ${init.serverInfo.name}`);
     check(init.serverInfo.version === VERSION, `server is ${init.serverInfo.version}, package is ${VERSION}`);
     const tools = (await s.request('tools/list', {})).tools.map((t) => t.name);
-    check(tools.includes('check_print') && tools.includes('about'), `tools: ${tools}`);
+    for (const t of ['check_print', 'about', 'list_printers', 'list_resins', 'slice']) {
+      check(tools.includes(t), `no ${t} tool: ${tools}`);
+    }
 
     await waitFor(() => existsSync(join(cache, 'update-check.json')), 10_000, 'the update check');
     const first = await s.callTool('check_print', { stl_path: stl });
@@ -193,6 +196,19 @@ async function main() {
     check(second.content.length === 1, 'update note repeated on the second tool result');
     const about = JSON.parse((await s.callTool('about')).content[0].text);
     check(about.update_available === true && about.latest_known === FAKE_LATEST, `about: ${JSON.stringify(about)}`);
+
+    const printers = JSON.parse((await s.callTool('list_printers')).content[0].text);
+    check(printers.printers.length > 0, `list_printers: ${JSON.stringify(printers)}`);
+    const resins = JSON.parse((await s.callTool('list_resins')).content[0].text);
+    check(resins.resins.length > 0, `list_resins: ${JSON.stringify(resins).slice(0, 500)}`);
+    const goo = join(tmp, 'trap.goo');
+    const sliced = await s.callTool('slice', { stl_path: stl, output_path: goo, resin: resins.resins[0].name });
+    check(!sliced.isError, `slice failed: ${JSON.stringify(sliced.content)}`);
+    const sliceReport = JSON.parse(sliced.content[0].text);
+    check(sliceReport.layers === 120 && sliceReport.print_time_s > 0, `slice: ${sliced.content[0].text}`);
+    check(readFileSync(goo).subarray(0, 4).toString() === 'V3.0', 'the .goo file does not start with V3.0');
+    const refused = await s.callTool('slice', { stl_path: stl, output_path: goo });
+    check(refused.isError, 'slice replaced an existing file without overwrite');
     await s.close();
     check(registry.hits.length === 1, `registry asked ${registry.hits.length} times`);
 
@@ -225,7 +241,8 @@ async function main() {
 
     console.log(
       `MCP session test passed: scion-slicer ${VERSION} on ${process.platform}-${process.arch}, ` +
-        `${report.layers} layers, ${report.findings.length} findings, one resin trap.`,
+        `${report.layers} layers, ${report.findings.length} findings, one resin trap; ` +
+        `sliced with ${sliceReport.resin} into ${sliceReport.layers} layers.`,
     );
   } finally {
     registry.close();

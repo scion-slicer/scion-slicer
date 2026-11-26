@@ -3,6 +3,9 @@
 //! Tools:
 //! - `check_print`: run the print checks on a binary STL and return the findings
 //!   (resin traps, suction cups, peel alerts, ledges) as JSON.
+//! - `list_printers`, `list_resins`: the printers and resin profiles to slice with,
+//!   ELEGOO SatelLite's when it's installed.
+//! - `slice`: slice a binary STL into a printer file (`.goo`).
 //! - `about`: the running version, whether a newer one exists, and how to update.
 //!
 //! When the npm launcher has seen a newer version on npm (see `update.rs`), the server
@@ -27,13 +30,19 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 
 use scion_slicer_core::checks::ChecksConfig;
+use scion_slicer_core::profiles::Catalog;
+use scion_slicer_core::slice::{
+    slice_stl, BottomCompensation, Placement, SliceOptions, SliceRequest,
+};
 use scion_slicer_core::{check_stl, DEFAULT_LAYER_HEIGHT_MM, DEFAULT_PX_MM};
 use update::Client;
 
 const INSTRUCTIONS: &str = "Scion Slicer: resin 3D printing tools built on the DragonFruit \
     slicing engine. Use check_print on an STL in print orientation to find resin traps, suction \
-    cups, peel problems and ledges before slicing. If a tool result ends with a note that a newer \
-    Scion Slicer version is available, pass that note on to the user once.";
+    cups, peel problems and ledges before slicing. Use list_printers and list_resins to see the \
+    printers and resin profiles, and slice to turn an STL into a file the printer reads (.goo for \
+    ELEGOO printers). If a tool result ends with a note that a newer Scion Slicer version is \
+    available, pass that note on to the user once.";
 
 /// How long after the client connects to look for the launcher's update result. The
 /// launcher's registry request times out after 2 seconds.
@@ -49,6 +58,42 @@ struct CheckPrintArgs {
     px_mm: Option<f64>,
     /// Layer height, in mm. Default 0.05.
     layer_height_mm: Option<f64>,
+}
+
+/// Arguments of `list_resins`.
+#[derive(Debug, Deserialize, JsonSchema)]
+struct ListResinsArgs {
+    /// Printer name, or part of it. Default: the first printer.
+    printer: Option<String>,
+}
+
+/// Arguments of `slice`.
+#[derive(Debug, Deserialize, JsonSchema)]
+struct SliceArgs {
+    /// Absolute path to a binary STL, already in print orientation (lowest point is what
+    /// touches the build plate) and with any supports it needs.
+    stl_path: String,
+    /// Where to write the printer file. Default: next to the STL, with a .goo extension.
+    output_path: Option<String>,
+    /// Printer name, or part of it (see list_printers). Default: the first printer.
+    printer: Option<String>,
+    /// Resin profile name, or part of it (see list_resins). Default: the profile ELEGOO
+    /// SatelLite last used.
+    resin: Option<String>,
+    /// Turn the part about the vertical axis by this many degrees first.
+    rotate_deg: Option<f64>,
+    /// Where the corner of the part's bounding box goes, in mm from the corner of the
+    /// screen: [x, y]. Default: centred.
+    position_mm: Option<[f64; 2]>,
+    /// Elephant's-foot compensation for outer outlines on the bottom layers, in mm
+    /// (negative shrinks). Default 0.
+    outline_compensation_mm: Option<f32>,
+    /// Compensation for holes on the bottom layers, in mm (negative opens them). Default 0.
+    hole_compensation_mm: Option<f32>,
+    /// Fade the compensation out over the transition layers. Default true.
+    fade_compensation: Option<bool>,
+    /// Replace the output file if it exists. Default false.
+    overwrite: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
@@ -117,6 +162,137 @@ impl ScionSlicer {
         })
         .await
         .map_err(|e| format!("the check stopped unexpectedly: {e}"))??;
+        let json = serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?;
+        Ok(self.with_update_notice(
+            CallToolResult::success(vec![ContentBlock::text(json)]),
+            &peer,
+        ))
+    }
+
+    /// The printers to slice for.
+    #[tool(
+        name = "list_printers",
+        description = "List the resin printers Scion Slicer can slice for: ELEGOO SatelLite's printers \
+                       when it's installed on this computer, otherwise the built-in ones. Shows each \
+                       printer's resolution, screen size and resin profiles."
+    )]
+    async fn list_printers(&self, peer: Peer<RoleServer>) -> Result<CallToolResult, String> {
+        let catalog = Catalog::load();
+        let printers: Vec<_> = catalog
+            .printers
+            .iter()
+            .map(|p| {
+                let m = &p.machine;
+                serde_json::json!({
+                    "name": m.name,
+                    "resolution_px": [m.resolution_x, m.resolution_y],
+                    "screen_mm": [m.display_width_mm, m.display_height_mm],
+                    "height_mm": m.machine_z_mm,
+                    "file_format": "goo",
+                    "resin_profiles": p.resins.len(),
+                    "active_resin": p.active_resin,
+                })
+            })
+            .collect();
+        let json = serde_json::json!({ "source": catalog.source, "problem": catalog.problem, "printers": printers });
+        let text = serde_json::to_string_pretty(&json).map_err(|e| e.to_string())?;
+        Ok(self.with_update_notice(
+            CallToolResult::success(vec![ContentBlock::text(text)]),
+            &peer,
+        ))
+    }
+
+    /// The resin profiles of a printer.
+    #[tool(
+        name = "list_resins",
+        description = "List the resin profiles for a printer, with their layer height, exposures, \
+                       bottom and transition layer counts and waits."
+    )]
+    async fn list_resins(
+        &self,
+        Parameters(args): Parameters<ListResinsArgs>,
+        peer: Peer<RoleServer>,
+    ) -> Result<CallToolResult, String> {
+        let catalog = Catalog::load();
+        let printer = catalog.printer(args.printer.as_deref())?;
+        let resins: Vec<_> = printer
+            .resins
+            .iter()
+            .map(|r| {
+                let waits = |w: &scion_slicer_goo::Waits| {
+                    serde_json::json!({
+                        "before_cure_s": w.before_cure_s,
+                        "before_release_s": w.before_release_s,
+                        "after_release_s": w.after_release_s,
+                    })
+                };
+                serde_json::json!({
+                    "name": r.profile_name,
+                    "active": printer.active_resin.as_deref() == Some(r.profile_name.as_str()),
+                    "layer_height_mm": r.layer_height_mm,
+                    "bottom_layers": r.bottom_layers,
+                    "transition_layers": r.transition_layers,
+                    "bottom_exposure_s": r.bottom.exposure_s,
+                    "exposure_s": r.normal.exposure_s,
+                    "bottom_waits": waits(&r.bottom.waits),
+                    "waits": waits(&r.normal.waits),
+                    "density_g_ml": r.density_g_ml,
+                })
+            })
+            .collect();
+        let json = serde_json::json!({ "printer": printer.machine.name, "source": catalog.source, "resins": resins });
+        let text = serde_json::to_string_pretty(&json).map_err(|e| e.to_string())?;
+        Ok(self.with_update_notice(
+            CallToolResult::success(vec![ContentBlock::text(text)]),
+            &peer,
+        ))
+    }
+
+    /// Slice a mesh into a printer file.
+    #[tool(
+        name = "slice",
+        description = "Slice a binary STL into a file the printer reads (.goo for ELEGOO printers), with \
+                       a printer and resin profile from list_printers / list_resins. The part goes on \
+                       the plate as it is oriented (lowest point down), centred unless a position is \
+                       given, optionally turned about the vertical axis. Bottom-layer compensation \
+                       for elephant's foot can shrink outlines and open holes. Returns the file's path, \
+                       layer count, print time, resin volume and weight. Run check_print first."
+    )]
+    async fn slice(
+        &self,
+        Parameters(args): Parameters<SliceArgs>,
+        peer: Peer<RoleServer>,
+    ) -> Result<CallToolResult, String> {
+        let compensation = match (
+            args.outline_compensation_mm.unwrap_or(0.0),
+            args.hole_compensation_mm.unwrap_or(0.0),
+        ) {
+            (0.0, 0.0) => None,
+            (outline_mm, hole_mm) => Some(BottomCompensation {
+                outline_mm,
+                hole_mm,
+                fade: args.fade_compensation.unwrap_or(true),
+            }),
+        };
+        let request = SliceRequest {
+            stl_path: PathBuf::from(&args.stl_path),
+            output_path: args.output_path.map(PathBuf::from),
+            printer: args.printer,
+            resin: args.resin,
+            options: SliceOptions {
+                placement: match args.position_mm {
+                    Some([x_mm, y_mm]) => Placement::Corner { x_mm, y_mm },
+                    None => Placement::Centered,
+                },
+                rotate_z_deg: args.rotate_deg.unwrap_or(0.0),
+                bottom_compensation: compensation,
+            },
+            overwrite: args.overwrite.unwrap_or(false),
+        };
+        // Slicing is CPU-bound; keep it off the async runtime's threads.
+        let report = tokio::task::spawn_blocking(move || slice_stl(&request, &Catalog::load()))
+            .await
+            .map_err(|e| format!("slicing stopped unexpectedly: {e}"))??;
         let json = serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?;
         Ok(self.with_update_notice(
             CallToolResult::success(vec![ContentBlock::text(json)]),

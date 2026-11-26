@@ -6,3 +6,4 @@
 # Copied in when the npm packages are built.
 /npm/mcp/LICENSE
 /dist
+/test-prints

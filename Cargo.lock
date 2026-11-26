@@ -1270,7 +1270,26 @@ dependencies = [
  "dragonfruit-islands",
  "dragonfruit-slicing-engine",
  "rayon",
+ "scion-slicer-ctb",
+ "scion-slicer-goo",
  "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "scion-slicer-ctb"
+version = "0.1.2"
+dependencies = [
+ "aes",
+ "cbc",
+ "crc32fast",
+ "sha2 0.10.9",
+]
+
+[[package]]
+name = "scion-slicer-goo"
+version = "0.1.2"
+dependencies = [
  "serde_json",
 ]
 
@@ -1281,6 +1300,7 @@ dependencies = [
  "rmcp",
  "schemars",
  "scion-slicer-core",
+ "scion-slicer-goo",
  "serde",
  "serde_json",
  "tokio",
