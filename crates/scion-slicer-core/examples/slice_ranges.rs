@@ -10,7 +10,7 @@
 
 use std::path::Path;
 
-use scion_slicer_core::ranges::{slice_ranges_to_ctb, HeightRange, RangeProfile};
+use scion_slicer_core::ranges::{slice_ranges_to_ctb, Coverage, HeightRange, RangeProfile};
 use scion_slicer_core::slice::{Placement, SliceOptions};
 use scion_slicer_core::stl;
 use scion_slicer_ctb::{LayerSettings, Motion, ResinInfo};
@@ -23,6 +23,7 @@ fn main() -> Result<(), String> {
     };
     let mut options = SliceOptions::default();
     let (mut split, mut drop_blank, mut single) = (4.0, false, false);
+    let mut coverage: Option<Coverage> = None;
     let mut machine = Machine::saturn_4_ultra_16k();
     let mut rest = args[2..].iter();
     let num = |v: Option<&String>| -> Result<f64, String> {
@@ -42,6 +43,14 @@ fn main() -> Result<(), String> {
             "--rotate" => options.rotate_z_deg = num(rest.next())?,
             "--drop-blank" => drop_blank = true,
             "--single" => single = true,
+            "--coverage" => {
+                let level = rest
+                    .next()
+                    .ok_or("--coverage needs a level and a threshold, e.g. 16x 64")?
+                    .clone();
+                let threshold = num(rest.next())? as u8;
+                coverage = Some(Coverage { level, threshold });
+            }
             "--mirror" => {
                 let m = rest.next().ok_or("--mirror needs none, x, y or xy")?;
                 machine.mirror_x = m.contains('x');
@@ -119,6 +128,7 @@ fn main() -> Result<(), String> {
         },
         anti_alias_level: 4,
         drop_blank_last_layer: drop_blank,
+        coverage,
     };
     let mesh = stl::load(Path::new(stl_path))?;
     let now = std::time::SystemTime::now()

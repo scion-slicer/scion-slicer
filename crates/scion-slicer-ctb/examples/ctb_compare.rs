@@ -1,6 +1,6 @@
 //! Compare two encrypted CTB files field by field and layer by layer.
 //!
-//!   cargo run --release -p scion-slicer-ctb --example ctb_compare -- ours.ctb theirs.ctb [--pixels]
+//!   cargo run --release -p scion-slicer-ctb --example ctb_compare -- ours.ctb theirs.ctb [--pixels] [--no-align]
 //!
 //! Prints every header and settings field that differs, every layer-record field that
 //! differs (data offsets and lengths are left out: they follow from the images), and with

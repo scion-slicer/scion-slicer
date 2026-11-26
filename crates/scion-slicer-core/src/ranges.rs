@@ -14,7 +14,8 @@
 //!   their exposure down from the bottom exposure to the first range's in equal steps and
 //!   otherwise use the first range's settings.
 //! - Images are mirrored left-right (Chitubox's convention for this printer; SatelLite's
-//!   .goo files mirror top-bottom instead).
+//!   .goo files mirror top-bottom instead), and a centred part sits where Chitubox centres
+//!   it ([`Placement::ChituboxCentered`]).
 
 use dragonfruit_slicing_engine::geometry::{parse_triangles, project_triangles_inplace};
 use dragonfruit_slicing_engine::index::{build_layer_index, LayerSamplingSpan};
@@ -24,7 +25,7 @@ use scion_slicer_ctb as ctb;
 use scion_slicer_goo::Machine;
 use serde::Serialize;
 
-use crate::slice::{pixel_pitch, place, screen_job_for, SliceOptions};
+use crate::slice::{pixel_pitch, place, screen_job_for, Placement, SliceOptions};
 use crate::stl::Mesh;
 
 /// A range of heights with its own settings.
@@ -48,6 +49,17 @@ pub struct RangeProfile {
     pub anti_alias_level: u32,
     /// Leave out a blank last layer instead of writing it as Chitubox does.
     pub drop_blank_last_layer: bool,
+    /// Light a pixel by how much of it the part covers instead of by its centre: the
+    /// engine's anti-aliasing level (e.g. "16x") measures the coverage, and a pixel is lit
+    /// when its coverage (0-255) is above the threshold. `None` samples the centre only.
+    pub coverage: Option<Coverage>,
+}
+
+/// Lighting pixels by coverage; see [`RangeProfile::coverage`].
+#[derive(Debug, Clone, PartialEq)]
+pub struct Coverage {
+    pub level: String,
+    pub threshold: u8,
 }
 
 /// One layer of the plan.
@@ -167,6 +179,17 @@ pub fn slice_ranges_to_ctb(
         mirror_y: false,
         ..machine.clone()
     };
+    // Centre the part where Chitubox does, so the layers match its pixel for pixel.
+    let chitubox_options;
+    let options = if options.placement == Placement::Centered {
+        chitubox_options = SliceOptions {
+            placement: Placement::ChituboxCentered,
+            ..*options
+        };
+        &chitubox_options
+    } else {
+        options
+    };
     let first_h = profile.ranges[0].layer_height_mm;
     let base_job = screen_job_for(
         machine,
@@ -192,13 +215,16 @@ pub fn slice_ranges_to_ctb(
         } else {
             None
         };
-        let job = screen_job_for(
+        let mut job = screen_job_for(
             machine,
             h as f32,
             profile.bottom_layers,
             profile.transition_layers,
             compensation,
         );
+        if let Some(c) = &profile.coverage {
+            job.anti_aliasing_level = c.level.clone();
+        }
         let flat: Vec<f32> = vertices
             .iter()
             .flat_map(|v| [v[0] as f32, v[1] as f32, (v[2] - start) as f32])
@@ -210,7 +236,13 @@ pub fn slice_ranges_to_ctb(
         let results: Vec<(u32, Vec<u8>, u64)> = in_range
             .par_iter()
             .map(|l| {
-                let px = rasterize_layer(&job, &tris, index.candidates_for_layer(l.local), l.local);
+                let mut px =
+                    rasterize_layer(&job, &tris, index.candidates_for_layer(l.local), l.local);
+                if let Some(c) = &profile.coverage {
+                    for p in &mut px {
+                        *p = if *p > c.threshold { 0xFF } else { 0 };
+                    }
+                }
                 debug_assert_eq!(px.len(), pixel_count);
                 let lit = px.iter().filter(|&&p| p != 0).count() as u64;
                 (l.index, ctb::rle::encode(&px), lit)
@@ -400,6 +432,7 @@ mod tests {
             },
             anti_alias_level: 4,
             drop_blank_last_layer: false,
+            coverage: None,
         }
     }
 

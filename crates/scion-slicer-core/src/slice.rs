@@ -21,6 +21,10 @@ use crate::stl::{self, Mesh};
 pub enum Placement {
     /// Centred on the screen.
     Centered,
+    /// Centred the way Chitubox centres a part on a CTB file's mirrored image: one and a
+    /// half pixels from [`Placement::Centered`] each way. Measured on two parts; it gives
+    /// Chitubox's pixels to within a few in tens of millions.
+    ChituboxCentered,
     /// The corner of the part's bounding box at this point, in mm from the corner of the
     /// screen where its first pixel is, as SatelLite places a part it loads.
     Corner { x_mm: f64, y_mm: f64 },
@@ -161,6 +165,10 @@ pub(crate) fn place(
     ];
     let corner = match options.placement {
         Placement::Centered => [(screen[0] - size[0]) / 2.0, (screen[1] - size[1]) / 2.0],
+        Placement::ChituboxCentered => [
+            (screen[0] - size[0]) / 2.0 - 1.5 * pitch[0],
+            (screen[1] - size[1]) / 2.0 - 1.5 * pitch[1],
+        ],
         Placement::Corner { x_mm, y_mm } => [x_mm, y_mm],
     };
     if corner[0] < 0.0

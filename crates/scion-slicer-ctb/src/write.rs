@@ -13,7 +13,8 @@ use crate::read::MAGIC_ENCRYPTED;
 /// The text Chitubox puts in every CTB file after the machine name.
 pub const DISCLAIMER: &str = "Layout and record format for the ctb and cbddlp file types are the copyrighted programs or codes of CBD Technology (China) Inc..The Customer or User shall not in any manner reproduce, distribute, modify, decompile, disassemble, decrypt, extract, reverse engineer, lease, assign, or sublicense the said programs or codes.";
 pub const DISCLAIMER_SIZE: usize = 320;
-/// Values Chitubox 2.x writes in settings fields whose meaning isn't known.
+/// Values Chitubox writes in settings fields whose meaning isn't known. `Unknown7`
+/// varies by file (37335 for the mold top, 5071 for the test pins); we write the first.
 const UNKNOWN7: u32 = 37335;
 const UNKNOWN8: u32 = 3;
 

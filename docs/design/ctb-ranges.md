@@ -58,7 +58,9 @@ Settings fields that matter:
 - `LastLayerIndex` holds the **layer count**, not count − 1 (UVtools displays count − 1).
 - `Unknown6` is the sum of every layer's exposure and three rests, as a 32-bit float
   (931.0 s for the mold top's two ranges, 989.0 s for one range).
-- `Unknown7` = 37335 and `Unknown8` = 3, `Four1` = `Four2` = 4, `Padding7` = 1.
+- `Unknown7` varies by file: 37335 for both mold-top files, 5071 for the test pins. It
+  isn't a CRC-16, CRC-32 or sum of the previews or the STL; its meaning is unknown, and we
+  write 37335. `Unknown8` = 3, `Four1` = `Four2` = 4, `Padding7` = 1.
 - The header's lift and retract fields hold only the first stage (0.05 mm); each layer's
   record holds the real two-stage moves.
 - `MaterialMilliliters` uses the header's layer height for every layer, so a 100 µm range
@@ -86,21 +88,33 @@ Rules found in Chitubox Pro's file, all reproduced exactly:
   SatelLite mirrors top-bottom; the two differ by a half turn, so parts print the same way
   round either way. DragonFruit's CTB preset mirrors Y.
 
+## Chitubox's pixel grid
+
+Chitubox centres a part on the screen and lights a pixel when its **corner** is inside
+the part, where DragonFruit's engine tests the pixel's **centre**. So on a 4 mm pin
+(285.7 × 210.5 pixels) Chitubox lights from ⌈left⌉ to ⌊right⌋ and gets 286 × 211 every
+time, while centre sampling gives 285 or 286 × 210 depending on where the pin falls. It
+isn't a fatter edge: the two grids are offset by half a pixel. Placing the part one and a
+half pixels from our plain centred position (`Placement::ChituboxCentered`, which a centred
+CTB slice now uses) reproduces Chitubox's pixels. The only remaining difference is an
+edge that falls exactly on a pixel boundary: Chitubox counts the boundary pixel as inside,
+the engine doesn't.
+
 ## How close we are
 
-| | Ours, two ranges, vs Chitubox Pro | Ours, one range, vs Chitubox |
-|---|---|---|
-| Layer count, z, every layer-record field | identical (98 layers) | identical (115 layers) |
-| Signature and CRC-32 | valid | valid |
-| Settings | the same except offsets (our preview is smaller), the XOR key and time stamp, print time and resin volume | the same |
-| Plate layers (0–79), pixel overlap | 99.94% mean, 99.81% lowest | 99.94% mean |
-| Ridge layers, pixel overlap | 96.9% mean, 91.9% lowest (the V tips) | 96.9% mean |
-| Lit pixels, all layers | 0.024% fewer | 0.024% fewer |
+Compared pixel for pixel at the same positions, with no alignment step:
 
-The ridges are 0.8 mm (57 px) wide, so a one-pixel difference at each edge costs about 3.5%
-of overlap. The two slicers place the part about one pixel apart, which accounts for most
-of it. Rewriting Chitubox Pro's own layers with our writer (`examples/ctb_rewrite`) gives
-identical layer records and settings apart from offsets and print time.
+| | Ours vs Chitubox Pro, mold top, two ranges | Ours vs Chitubox Pro, test pins, two ranges |
+|---|---|---|
+| Layers, z, every layer-record field | identical (98) | identical (120) |
+| Signature and CRC-32 | valid | valid |
+| Settings | the same except offsets (our preview is smaller), the XOR key and time stamp, print time, resin volume and `Unknown7` | the same |
+| Plate layers, pixel overlap | 99.998% mean (6–8 pixels of 58 million differ) | — |
+| Ridge layers / pins, pixel overlap | 99.983% mean, 99.894% lowest (the V tip) | 99.913% (one pin edge exactly on a pixel boundary) |
+
+Our single-range slice matches Chitubox's single-range file the same way. Rewriting
+Chitubox Pro's own layers with our writer (`examples/ctb_rewrite`) gives identical layer
+records and settings apart from offsets and print time.
 
 ## DragonFruit's CTB encoder
 
