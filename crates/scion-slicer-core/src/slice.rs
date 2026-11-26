@@ -91,9 +91,53 @@ pub fn slice_to_goo<W: Write + Seek>(
     options: &SliceOptions,
 ) -> Result<(W, Summary), String> {
     let job = screen_job(machine, resin, options.bottom_compensation);
-    let pitch = pixel_pitch(machine);
+    let (vertices, height) = place(mesh, machine, &job, options)?;
+    let flat: Vec<f32> = vertices.iter().flat_map(|v| v.map(|c| c as f32)).collect();
+    let mut projected = parse_triangles(&flat);
+    project_triangles_inplace(&mut projected, &job);
+    let total_layers = (height / resin.layer_height_mm as f64).ceil().max(0.0) as u32;
+    let index = build_layer_index(
+        &projected,
+        total_layers,
+        job.layer_height_mm,
+        LayerSamplingSpan::CenterOnly,
+    );
 
-    // Turn the part, then measure it.
+    let mut writer = GooWriter::new(
+        out,
+        machine.clone(),
+        resin.clone(),
+        FileInfo::scion_slicer(),
+    )
+    .map_err(|e| e.to_string())?;
+    let layers: Vec<u32> = (0..total_layers).collect();
+    for batch in layers.chunks(LAYERS_PER_BATCH) {
+        let prepared = batch
+            .par_iter()
+            .map(|&l| {
+                let pixels = rasterize_layer(&job, &projected, index.candidates_for_layer(l), l);
+                prepare_layer(machine, &pixels)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        for layer in &prepared {
+            writer.add_prepared(layer).map_err(|e| e.to_string())?;
+        }
+    }
+    writer
+        .finish(Some(mesh_volume_mm3(&mesh.triangles)))
+        .map_err(|e| e.to_string())
+}
+
+/// Turn the part and move it where `options` puts it, in the engine's coordinates for
+/// `job` (pixel 0's edge at -build/2), lowest point on the plate. Returns the vertices,
+/// three per triangle, and the part's height.
+pub(crate) fn place(
+    mesh: &Mesh,
+    machine: &Machine,
+    job: &SliceJobV3,
+    options: &SliceOptions,
+) -> Result<(Vec<[f64; 3]>, f64), String> {
+    let pitch = pixel_pitch(machine);
     let (sin, cos) = options.rotate_z_deg.to_radians().sin_cos();
     let mut vertices: Vec<[f64; 3]> = Vec::with_capacity(mesh.triangles.len() * 3);
     for t in &mesh.triangles {
@@ -129,56 +173,22 @@ pub fn slice_to_goo<W: Write + Seek>(
             size[0], size[1], machine.name, screen[0], screen[1]
         ));
     }
-
     // The engine puts pixel 0's edge at -build/2 and spreads the build over n - 1 pixels.
-    // Move the part from screen coordinates into the engine's, lowest point on the plate.
     let shift = [
         corner[0] - lo[0] - job.build_width_mm as f64 / 2.0,
         corner[1] - lo[1] - job.build_depth_mm as f64 / 2.0,
         -lo[2],
     ];
-    let flat: Vec<f32> = vertices
-        .iter()
-        .flat_map(|v| (0..3).map(move |i| (v[i] + shift[i]) as f32))
-        .collect();
-    let mut projected = parse_triangles(&flat);
-    project_triangles_inplace(&mut projected, &job);
-    let height = hi[2] - lo[2];
-    let total_layers = (height / resin.layer_height_mm as f64).ceil().max(0.0) as u32;
-    let index = build_layer_index(
-        &projected,
-        total_layers,
-        job.layer_height_mm,
-        LayerSamplingSpan::CenterOnly,
-    );
-
-    let mut writer = GooWriter::new(
-        out,
-        machine.clone(),
-        resin.clone(),
-        FileInfo::scion_slicer(),
-    )
-    .map_err(|e| e.to_string())?;
-    let layers: Vec<u32> = (0..total_layers).collect();
-    for batch in layers.chunks(LAYERS_PER_BATCH) {
-        let prepared = batch
-            .par_iter()
-            .map(|&l| {
-                let pixels = rasterize_layer(&job, &projected, index.candidates_for_layer(l), l);
-                prepare_layer(machine, &pixels)
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        for layer in &prepared {
-            writer.add_prepared(layer).map_err(|e| e.to_string())?;
+    for v in &mut vertices {
+        for i in 0..3 {
+            v[i] += shift[i];
         }
     }
-    writer
-        .finish(Some(mesh_volume_mm3(&mesh.triangles)))
-        .map_err(|e| e.to_string())
+    Ok((vertices, hi[2] - lo[2]))
 }
 
 /// The screen's pixel size in mm, across and down.
-fn pixel_pitch(machine: &Machine) -> [f64; 2] {
+pub(crate) fn pixel_pitch(machine: &Machine) -> [f64; 2] {
     [
         machine.display_width_mm as f64 / machine.resolution_x as f64,
         machine.display_height_mm as f64 / machine.resolution_y as f64,
@@ -193,9 +203,25 @@ fn screen_job(
     resin: &Resin,
     compensation: Option<BottomCompensation>,
 ) -> SliceJobV3 {
+    screen_job_for(
+        machine,
+        resin.layer_height_mm,
+        resin.bottom_layers,
+        resin.transition_layers as u32,
+        compensation,
+    )
+}
+
+/// [`screen_job`] for any layer height and bottom and transition layer counts.
+pub(crate) fn screen_job_for(
+    machine: &Machine,
+    layer_height_mm: f32,
+    bottom: u32,
+    transition: u32,
+    compensation: Option<BottomCompensation>,
+) -> SliceJobV3 {
     let pitch = pixel_pitch(machine);
     let (w, h) = (machine.resolution_x as u32, machine.resolution_y as u32);
-    let (bottom, transition) = (resin.bottom_layers, resin.transition_layers as u32);
     let c = compensation.unwrap_or(BottomCompensation {
         outline_mm: 0.0,
         hole_mm: 0.0,
@@ -212,7 +238,7 @@ fn screen_job(
         height_px: h,
         build_width_mm: ((w - 1) as f64 * pitch[0]) as f32,
         build_depth_mm: ((h - 1) as f64 * pitch[1]) as f32,
-        layer_height_mm: resin.layer_height_mm,
+        layer_height_mm,
         total_layers: 0,
         anti_aliasing_level: "Off".to_string(),
         x_packing_mode: "none".to_string(),

@@ -6,11 +6,13 @@
 //!
 //! - [`checks`]: print checks (resin traps, suction cups, peel alerts, ledges).
 //! - [`profiles`]: the printers and resin profiles to slice with.
+//! - [`ranges`]: slicing by height ranges into a CTB file with per-layer settings.
 //! - [`slice`]: slicing a mesh into a printer file.
 //! - [`stl`]: loading meshes.
 
 pub mod checks;
 pub mod profiles;
+pub mod ranges;
 pub mod slice;
 pub mod stl;
 

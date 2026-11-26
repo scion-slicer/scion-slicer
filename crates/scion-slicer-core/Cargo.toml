@@ -12,4 +12,8 @@ dragonfruit-islands.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 rayon.workspace = true
+scion-slicer-ctb.workspace = true
 scion-slicer-goo.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
